@@ -1,0 +1,38 @@
+{
+  "name": "frontend",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxt/hints": "^1.0.0-alpha.1",
+    "@nuxt/image": "^2.0.0",
+    "@nuxt/scripts": "^0.13.0",
+    "@nuxtjs/axios": "^5.13.6",
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "@pinia/nuxt": "^0.11.3",
+    "@tailwindcss/forms": "^0.5.10",
+    "@unhead/vue": "^2.0.19",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-vue-next": "^0.553.0",
+    "nuxt": "^4.2.1",
+    "pinia": "^3.0.4",
+    "shadcn-nuxt": "^2.3.2",
+    "tailwind-merge": "^3.4.0",
+    "vue": "^3.5.24",
+    "vue-router": "^4.6.3"
+  },
+  "devDependencies": {
+    "@nuxtjs/pwa": "^3.3.5",
+    "@types/node": "^24.10.1",
+    "@vite-pwa/nuxt": "^1.0.7",
+    "vite-tsconfig-paths": "^5.1.4",
+    "workbox-window": "^7.3.0"
+  }
+}
