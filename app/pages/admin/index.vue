@@ -255,7 +255,8 @@ import { ref } from 'vue'
 
 // Define layout
 definePageMeta({
-  layout: 'admin'
+  layout: 'admin',
+  middleware: ['auth']
 })
 
 // Statistics data

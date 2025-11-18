@@ -236,8 +236,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useAuth } from '~/composables/useAuth'
-import axios from 'axios'
+
+// Use Pinia auth store
+const authStore = useAuthStore()
 
 // Form data
 const form = ref({
@@ -251,8 +252,10 @@ const errors = ref({
   password: ''
 })
 
-const isLoading = ref(false)
 const showPassword = ref(false)
+
+// Get loading state from store
+const isLoading = computed(() => authStore.authLoading)
 
 // Validation function
 const validateForm = () => {
@@ -284,49 +287,38 @@ const handleSubmit = async () => {
     return
   }
 
-  isLoading.value = true
+  // Clear previous errors
+  authStore.clearError()
+  errors.value = { email: '', password: '' }
 
-  try {
-    // const { login } = useAuth()
-    // await login({
-    //   email: form.value.email,
-    //   password: form.value.password,
-    //   remember: form.value.rememberMe
-    // })
+  // Call Pinia store login action
+  const result = await authStore.login({
+    email: form.value.email,
+    password: form.value.password,
+    remember: form.value.rememberMe
+  })
 
-      const { $apiFetch } = useNuxtApp()
-    // Ensure CSRF cookie is present
-    await $apiFetch('/sanctum/csrf-cookie')
-    // const token = getCookie('XSRF-TOKEN') || getCookie('X-CSRF-TOKEN') || ''
-    console.log('CSRF cookie set.')
-    console.log('cookie value is ',useCookie('XSRF-TOKEN').value)
-    // console.log('Using CSRF token:', token)
-    // Build base URL from runtime config       
-          await $apiFetch('/login', {
-            method: 'POST',
-            body:{
-                email: form.value.email,
-                password: form.value.password,
-                remember: form.value.rememberMe
-            }
-          })
-
-    // Redirect to dashboard
+  if (result.success) {
+    // Redirect to dashboard on success
     await navigateTo('/admin')
-    alert('Login successful! Redirecting to dashboard...')
-  } catch (error) {
-    console.error('Login error:', error)
-    const resData = error?.response?.data || error?.data
-    if (resData?.errors) {
-      if (resData.errors.email) errors.value.email = resData.errors.email[0]
-      if (resData.errors.password) errors.value.password = resData.errors.password[0]
-    } else {
-      errors.value.password = 'Invalid email or password'
+  } else if (result.errors) {
+    // Map validation errors to form fields
+    if (result.errors.email) {
+      errors.value.email = result.errors.email[0]
     }
-  } finally {
-    isLoading.value = false
+    if (result.errors.password) {
+      errors.value.password = result.errors.password[0]
+    }
+  } else {
+    // Generic error message
+    errors.value.password = result.error || 'Invalid email or password'
   }
 }
+
+// Page metadata
+definePageMeta({
+  middleware: ['guest']
+})
 
 // SEO Meta
 useHead({

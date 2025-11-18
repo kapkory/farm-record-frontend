@@ -300,7 +300,8 @@ import { ref, computed } from 'vue'
 
 // Define layout
 definePageMeta({
-  layout: 'admin'
+  layout: 'admin',
+  middleware: ['auth']
 })
 
 // Filters

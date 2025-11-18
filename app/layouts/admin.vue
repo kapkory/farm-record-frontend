@@ -433,6 +433,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 
+// Use Pinia auth store
+const authStore = useAuthStore()
+
 const sidebarOpen = ref(false)
 const showNotifications = ref(false)
 const showUserMenu = ref(false)
@@ -448,11 +451,12 @@ const toggleDropdown = (menu) => {
   openDropdowns.value[menu] = !openDropdowns.value[menu]
 }
 
-// User info
-const userName = ref('Administrator')
-const userEmail = ref('admin@farmmanage.com')
+// User info from auth store
+const userName = computed(() => authStore.currentFarmer?.name || 'User')
+const userEmail = computed(() => authStore.currentFarmer?.email || 'user@farmmanage.com')
 const userInitials = computed(() => {
-  const names = userName.value.split(' ')
+  const name = userName.value
+  const names = name.split(' ')
   if (names.length >= 2) {
     return names[0][0] + names[1][0]
   }
@@ -460,24 +464,8 @@ const userInitials = computed(() => {
 })
 
 const handleLogout = async () => {
-  try {
-    const { $apiFetch } = useNuxtApp();
-    await $apiFetch('/logout', {
-            method: 'POST'
-        });
-
-    // success: redirect to home / login
-    await navigateTo('/')
-  } catch (err) {
-    console.error('Error during logout:', err)
-    // Provide a helpful message for CSRF/session-related 419 errors
-    const status = err?.response?.status || err?.status
-    if (status === 419) {
-      alert('Session expired or CSRF token missing. Please refresh the page and try again.')
-    } else {
-      alert('An error occurred during logout. Please try again.')
-    }
-  }
+  showUserMenu.value = false
+  await authStore.logout()
 }
 
 // Breadcrumb computed from current route path

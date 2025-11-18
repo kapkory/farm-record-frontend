@@ -232,9 +232,11 @@
 
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
 
-// Form data (simplified)
+// Use Pinia auth store
+const authStore = useAuthStore()
+
+// Form data
 const form = ref({
   name: '',
   email: '',
@@ -249,8 +251,10 @@ const errors = ref({
   password: ''
 })
 
-const isLoading = ref(false)
 const showPassword = ref(false)
+
+// Get loading state from store
+const isLoading = computed(() => authStore.authLoading)
 
 // Validation function
 const validateForm = () => {
@@ -290,58 +294,49 @@ const validateForm = () => {
   return isValid
 }
 
-// Form submission (using axios + Sanctum cookie-based auth)
+// Form submission using Pinia store
 const handleSubmit = async () => {
   if (!validateForm()) return
 
-  isLoading.value = true
+  // Clear previous errors
+  authStore.clearError()
+  errors.value = { name: '', email: '', phone: '', password: '' }
 
-  try {
-    const { $apiFetch } = useNuxtApp()
-    // Ensure CSRF cookie is present
-    await $apiFetch('/sanctum/csrf-cookie')
-    // const token = getCookie('XSRF-TOKEN') || getCookie('X-CSRF-TOKEN') || ''
-    console.log('CSRF cookie set.')
-    console.log('cookie value is ',useCookie('XSRF-TOKEN').value)
-    // console.log('Using CSRF token:', token)
-    // Build base URL from runtime config       
-          await $apiFetch('/register', {
-            method: 'POST',
-            body:{
-              name: form.value.name,
-              email: form.value.email,
-              phone: form.value.phone,
-              password: form.value.password
-            }
-          })
+  // Call Pinia store register action
+  const result = await authStore.register({
+    name: form.value.name,
+    email: form.value.email,
+    phone: form.value.phone,
+    password: form.value.password
+  })
 
-    // success
-    await navigateTo('/dashboard')
-    alert('Account created successfully! You can now set up your farm.')
-
-  } catch (err) {
-    console.error('Registration error:', err)
-
-    // Reset previous errors
-    errors.value = { name: '', email: '', phone: '', password: '' }
-
-    const resData = err?.response?.data || err?.data
-    if (resData?.errors && typeof resData.errors === 'object') {
-      for (const key in resData.errors) {
-        const arr = resData.errors[key]
-        if (Array.isArray(arr) && arr.length && key in errors.value) {
-          errors.value[key] = arr[0]
-        }
-      }
-    } else if (resData?.message) {
-      alert(resData.message)
-    } else {
-      alert(err?.message || 'Registration failed. Please try again.')
+  if (result.success) {
+    // Redirect to admin dashboard on success
+    await navigateTo('/admin')
+  } else if (result.errors) {
+    // Map validation errors to form fields
+    if (result.errors.name) {
+      errors.value.name = result.errors.name[0]
     }
-  } finally {
-    isLoading.value = false
+    if (result.errors.email) {
+      errors.value.email = result.errors.email[0]
+    }
+    if (result.errors.phone) {
+      errors.value.phone = result.errors.phone[0]
+    }
+    if (result.errors.password) {
+      errors.value.password = result.errors.password[0]
+    }
+  } else {
+    // Generic error message
+    errors.value.email = result.error || 'Registration failed. Please try again.'
   }
 }
+
+// Page metadata
+definePageMeta({
+  middleware: ['guest']
+})
 
 // SEO Meta
 useHead({
