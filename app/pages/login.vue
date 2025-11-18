@@ -253,9 +253,10 @@ const errors = ref({
 })
 
 const showPassword = ref(false)
+const isSubmitting = ref(false)
 
 // Get loading state from store
-const isLoading = computed(() => authStore.authLoading)
+const isLoading = computed(() => authStore.authLoading || isSubmitting.value)
 
 // Validation function
 const validateForm = () => {
@@ -283,35 +284,47 @@ const validateForm = () => {
 
 // Form submission
 const handleSubmit = async () => {
+  // Prevent duplicate submissions at component level
+  if (isSubmitting.value) {
+    console.log('Form already submitting, ignoring duplicate submission')
+    return
+  }
+
   if (!validateForm()) {
     return
   }
 
-  // Clear previous errors
-  authStore.clearError()
-  errors.value = { email: '', password: '' }
+  isSubmitting.value = true
 
-  // Call Pinia store login action
-  const result = await authStore.login({
+  try {
+    // Clear previous errors
+    authStore.clearError()
+    errors.value = { email: '', password: '' }
+
+    // Call Pinia store login action
+    const result = await authStore.login({
     email: form.value.email,
-    password: form.value.password,
-    remember: form.value.rememberMe
-  })
+      password: form.value.password,
+      remember: form.value.rememberMe
+    })
 
-  if (result.success) {
-    // Redirect to dashboard on success
-    await navigateTo('/admin')
-  } else if (result.errors) {
-    // Map validation errors to form fields
-    if (result.errors.email) {
-      errors.value.email = result.errors.email[0]
+    if (result.success) {
+      // Redirect to dashboard on success
+      await navigateTo('/admin')
+    } else if (result.errors) {
+      // Map validation errors to form fields
+      if (result.errors.email) {
+        errors.value.email = result.errors.email[0]
+      }
+      if (result.errors.password) {
+        errors.value.password = result.errors.password[0]
+      }
+    } else {
+      // Generic error message
+      errors.value.password = result.error || 'Invalid email or password'
     }
-    if (result.errors.password) {
-      errors.value.password = result.errors.password[0]
-    }
-  } else {
-    // Generic error message
-    errors.value.password = result.error || 'Invalid email or password'
+  } finally {
+    isSubmitting.value = false
   }
 }
 

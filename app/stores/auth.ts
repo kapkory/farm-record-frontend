@@ -39,6 +39,12 @@ export const useAuthStore = defineStore('authStore', () => {
 
   // Actions
   const login = async (credentials: LoginCredentials) => {
+    // Prevent duplicate submissions
+    if (isLoading.value) {
+      console.log('Login already in progress, skipping duplicate request');
+      return { success: false, error: 'Request already in progress' };
+    }
+
     isLoading.value = true;
     error.value = null;
 
@@ -163,6 +169,12 @@ export const useAuthStore = defineStore('authStore', () => {
   };
 
   const register = async (credentials: RegisterCredentials) => {
+    // Prevent duplicate submissions
+    if (isLoading.value) {
+      console.log('Registration already in progress, skipping duplicate request');
+      return { success: false, error: 'Request already in progress' };
+    }
+
     isLoading.value = true;
     error.value = null;
 

@@ -252,9 +252,10 @@ const errors = ref({
 })
 
 const showPassword = ref(false)
+const isSubmitting = ref(false)
 
 // Get loading state from store
-const isLoading = computed(() => authStore.authLoading)
+const isLoading = computed(() => authStore.authLoading || isSubmitting.value)
 
 // Validation function
 const validateForm = () => {
@@ -296,40 +297,52 @@ const validateForm = () => {
 
 // Form submission using Pinia store
 const handleSubmit = async () => {
+  // Prevent duplicate submissions at component level
+  if (isSubmitting.value) {
+    console.log('Form already submitting, ignoring duplicate submission')
+    return
+  }
+
   if (!validateForm()) return
 
-  // Clear previous errors
-  authStore.clearError()
-  errors.value = { name: '', email: '', phone: '', password: '' }
+  isSubmitting.value = true
 
-  // Call Pinia store register action
-  const result = await authStore.register({
+  try {
+    // Clear previous errors
+    authStore.clearError()
+    errors.value = { name: '', email: '', phone: '', password: '' }
+
+    // Call Pinia store register action
+    const result = await authStore.register({
     name: form.value.name,
     email: form.value.email,
     phone: form.value.phone,
-    password: form.value.password
-  })
+      password: form.value.password
+    })
 
-  if (result.success) {
-    // Redirect to admin dashboard on success
-    await navigateTo('/admin')
-  } else if (result.errors) {
-    // Map validation errors to form fields
-    if (result.errors.name) {
-      errors.value.name = result.errors.name[0]
+    if (result.success) {
+      // Redirect to admin dashboard on success
+      await navigateTo('/admin')
+    } else if (result.errors) {
+      // Map validation errors to form fields
+      if (result.errors.name) {
+        errors.value.name = result.errors.name[0]
+      }
+      if (result.errors.email) {
+        errors.value.email = result.errors.email[0]
+      }
+      if (result.errors.phone) {
+        errors.value.phone = result.errors.phone[0]
+      }
+      if (result.errors.password) {
+        errors.value.password = result.errors.password[0]
+      }
+    } else {
+      // Generic error message
+      errors.value.email = result.error || 'Registration failed. Please try again.'
     }
-    if (result.errors.email) {
-      errors.value.email = result.errors.email[0]
-    }
-    if (result.errors.phone) {
-      errors.value.phone = result.errors.phone[0]
-    }
-    if (result.errors.password) {
-      errors.value.password = result.errors.password[0]
-    }
-  } else {
-    // Generic error message
-    errors.value.email = result.error || 'Registration failed. Please try again.'
+  } finally {
+    isSubmitting.value = false
   }
 }
 
