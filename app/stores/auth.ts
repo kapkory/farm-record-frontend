@@ -10,6 +10,8 @@ interface RegisterCredentials {
   name: string;
   email: string;
   phone: string;
+  farm_name: string;
+  farm_type: string;
   password: string;
 }
 
@@ -17,6 +19,8 @@ interface ValidationErrors {
   name?: string[];
   email?: string[];
   phone?: string[];
+  farm_name?: string[];
+  farm_type?: string[];
   password?: string[];
   [key: string]: string[] | undefined;
 }
@@ -197,6 +201,8 @@ export const useAuthStore = defineStore('authStore', () => {
           name: credentials.name,
           email: credentials.email,
           phone: credentials.phone,
+          farm_name: credentials.farm_name,
+          farm_type: credentials.farm_type,
           password: credentials.password,
         },
       });

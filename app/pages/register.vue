@@ -88,10 +88,7 @@
       <div class="flex justify-center lg:justify-end">
         <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
           <!-- Form Header -->
-          <div class="text-center mb-8">
-            <h2 class="text-3xl font-bold text-gray-900 mb-2">Create Account</h2>
-            <p class="text-gray-600">Get started with FarmManage Pro</p>
-          </div>
+  
           
           <!-- Registration Form -->
           <form @submit.prevent="handleSubmit" class="space-y-6">
@@ -165,6 +162,57 @@
                 </div>
               </div>
               <p v-if="errors.phone" class="text-sm text-red-500 mt-1">{{ errors.phone }}</p>
+            </div>
+
+            <!-- Farm Display Name Field -->
+            <div class="space-y-2">
+              <label for="farm_name" class="text-sm font-semibold text-gray-700 block">
+                Farm Display Name
+              </label>
+              <div class="relative">
+                <input
+                  id="farm_name"
+                  v-model="form.farm_name"
+                  type="text"
+                  placeholder="Green Valley Farm"
+                  required
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all outline-none text-gray-900 placeholder-gray-400"
+                  :class="{'border-red-500': errors.farm_name}"
+                />
+                <div v-if="errors.farm_name" class="absolute right-3 top-3">
+                  <svg class="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <p v-if="errors.farm_name" class="text-sm text-red-500 mt-1">{{ errors.farm_name }}</p>
+            </div>
+
+            <!-- Farm Type Field -->
+            <div class="space-y-2">
+              <label for="farm_type" class="text-sm font-semibold text-gray-700 block">
+                Farm Type
+              </label>
+              <div class="relative">
+                <select
+                  id="farm_type"
+                  v-model="form.farm_type"
+                  required
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all outline-none text-gray-900 appearance-none bg-white"
+                  :class="{'border-red-500': errors.farm_type}"
+                >
+                  <option value="" disabled>Select farm type</option>
+                  <option value="individual">Individual</option>
+                  <option value="group">Group</option>
+                  <option value="company">Company</option>
+                </select>
+                <div class="absolute right-3 top-3 pointer-events-none">
+                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </div>
+              </div>
+              <p v-if="errors.farm_type" class="text-sm text-red-500 mt-1">{{ errors.farm_type }}</p>
             </div>
 
             <!-- Password Field -->
@@ -241,6 +289,8 @@ const form = ref({
   name: '',
   email: '',
   phone: '',
+  farm_name: '',
+  farm_type: '',
   password: ''
 })
 
@@ -248,6 +298,8 @@ const errors = ref({
   name: '',
   email: '',
   phone: '',
+  farm_name: '',
+  farm_type: '',
   password: ''
 })
 
@@ -264,6 +316,8 @@ const validateForm = () => {
     name: '',
     email: '',
     phone: '',
+    farm_name: '',
+    farm_type: '',
     password: ''
   }
 
@@ -283,6 +337,18 @@ const validateForm = () => {
   // Phone validation
   if (!form.value.phone || form.value.phone.length < 10) {
     errors.value.phone = 'Please enter a valid phone number'
+    isValid = false
+  }
+
+  // Farm name validation
+  if (!form.value.farm_name || form.value.farm_name.length < 2) {
+    errors.value.farm_name = 'Please enter a farm display name'
+    isValid = false
+  }
+
+  // Farm type validation
+  if (!form.value.farm_type) {
+    errors.value.farm_type = 'Please select a farm type'
     isValid = false
   }
 
@@ -310,13 +376,15 @@ const handleSubmit = async () => {
   try {
     // Clear previous errors
     authStore.clearError()
-    errors.value = { name: '', email: '', phone: '', password: '' }
+    errors.value = { name: '', email: '', phone: '', farm_name: '', farm_type: '', password: '' }
 
     // Call Pinia store register action
     const result = await authStore.register({
-    name: form.value.name,
-    email: form.value.email,
-    phone: form.value.phone,
+      name: form.value.name,
+      email: form.value.email,
+      phone: form.value.phone,
+      farm_name: form.value.farm_name,
+      farm_type: form.value.farm_type,
       password: form.value.password
     })
 
@@ -330,6 +398,12 @@ const handleSubmit = async () => {
       }
       if (result.errors.email) {
         errors.value.email = result.errors.email[0]
+      }
+      if (result.errors.farm_name) {
+        errors.value.farm_name = result.errors.farm_name[0]
+      }
+      if (result.errors.farm_type) {
+        errors.value.farm_type = result.errors.farm_type[0]
       }
       if (result.errors.phone) {
         errors.value.phone = result.errors.phone[0]
@@ -353,9 +427,9 @@ definePageMeta({
 
 // SEO Meta
 useHead({
-  title: 'Register - FarmManage Pro',
+  title: 'Register - FarmConsul',
   meta: [
-    { name: 'description', content: 'Join FarmManage Pro and transform your farming operations with our comprehensive management system.' }
+    { name: 'description', content: 'Join FarmConsul and transform your farming operations with our comprehensive management system.' }
   ]
 })
 </script>

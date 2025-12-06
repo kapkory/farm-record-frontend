@@ -303,7 +303,7 @@ const handleSubmit = async () => {
 
     // Call Pinia store login action
     const result = await authStore.login({
-    email: form.value.email,
+      email: form.value.email,
       password: form.value.password,
       remember: form.value.rememberMe
     })
