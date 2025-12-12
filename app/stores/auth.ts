@@ -27,6 +27,8 @@ interface ValidationErrors {
 
 export const useAuthStore = defineStore('authStore', () => {
   const nuxtApp = useNuxtApp();
+  // Fallback to $fetch if plugin has not injected $apiFetch yet (defensive)
+  const apiFetch = (nuxtApp as any).$apiFetch || $fetch;
   const router = useRouter();
 
   // State
@@ -34,6 +36,7 @@ export const useAuthStore = defineStore('authStore', () => {
   const isAuthenticated = ref(false);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
+  const isInitialized = ref(false);
 
   // Computed
   const currentFarmer = computed(() => farmer.value);
@@ -54,7 +57,7 @@ export const useAuthStore = defineStore('authStore', () => {
 
     try {
       // Ensure CSRF cookie is set
-      await nuxtApp.$apiFetch('/sanctum/csrf-cookie');
+      await apiFetch('/sanctum/csrf-cookie');
       
       // Small delay to ensure cookie is set in browser
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -157,19 +160,36 @@ export const useAuthStore = defineStore('authStore', () => {
   };
 
   const initialize = async () => {
+    if (isInitialized.value) return;
+
     // Check if user was logged in (from localStorage)
     if (import.meta.client) {
       const wasLoggedIn = localStorage.getItem('auth_logged_in');
       
       if (wasLoggedIn === 'true') {
         try {
+          // Ensure we have CSRF cookie before fetching user
+          await apiFetch('/sanctum/csrf-cookie');
           await fetchUser();
-        } catch (err) {
-          // User session expired, clear localStorage
-          localStorage.removeItem('auth_logged_in');
+        } catch (err: any) {
+          console.error('Failed to restore user session:', err);
+          
+          // Only clear localStorage if we get a clear authentication error (401)
+          // This prevents clearing on network errors or other temporary issues
+          const status = err?.response?.status || err?.status;
+          if (status === 401 || status === 419) {
+            // User session expired or invalid, clear localStorage
+            localStorage.removeItem('auth_logged_in');
+            farmer.value = null;
+            isAuthenticated.value = false;
+          }
+          // For other errors (network, 500, etc.), keep the localStorage
+          // The user can try again or the next request might succeed
         }
       }
     }
+
+    isInitialized.value = true;
   };
 
   const register = async (credentials: RegisterCredentials) => {
@@ -195,7 +215,7 @@ export const useAuthStore = defineStore('authStore', () => {
       }
       
       // Register request
-      await nuxtApp.$apiFetch('/register', {
+      await apiFetch('/register', {
         method: 'POST',
         body: {
           name: credentials.name,
@@ -259,6 +279,7 @@ export const useAuthStore = defineStore('authStore', () => {
     isLoggedIn,
     authError,
     authLoading,
+    isInitialized,
     // Actions
     login,
     register,

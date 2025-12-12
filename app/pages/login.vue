@@ -14,7 +14,7 @@
             </svg>
           </div>
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">FarmManage Pro</h1>
+            <h1 class="text-2xl font-bold text-gray-900">FarmConsul</h1>
             <p class="text-sm text-gray-600">Smart Farm Management System</p>
           </div>
         </div>
@@ -335,9 +335,9 @@ definePageMeta({
 
 // SEO Meta
 useHead({
-  title: 'Login - FarmManage Pro',
+  title: 'Login - FarmConsul ',
   meta: [
-    { name: 'description', content: 'Sign in to your FarmManage Pro account and manage your farming operations efficiently.' }
+    { name: 'description', content: 'Sign in to your FarmConsul account and manage your farming operations efficiently.' }
   ]
 })
 </script>
