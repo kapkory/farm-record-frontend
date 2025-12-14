@@ -53,7 +53,7 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-600">Total Area</p>
-            <p class="text-2xl font-bold text-gray-900 mt-1">{{ totalArea }} <span class="text-sm text-gray-600">acres</span></p>
+            <p class="text-2xl font-bold text-gray-900 mt-1">{{ totalArea }} <span class="text-sm text-gray-600">{{ totalAreaUnit }}</span></p>
           </div>
           <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
             <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +63,7 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+      <!-- <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-600">Avg. Revenue</p>
@@ -75,7 +75,7 @@
             </svg>
           </div>
         </div>
-      </div>
+      </div> -->
     </div>
 
     <!-- Filters and Search -->
@@ -122,9 +122,8 @@
           >
             <option value="">All Types</option>
             <option value="crop">Crop</option>
-            <option value="livestock">Livestock</option>
+            <option value="animal">Animal</option>
             <option value="mixed">Mixed</option>
-            <option value="organic">Organic</option>
           </select>
         </div>
       </div>
@@ -162,12 +161,10 @@
                 <input type="checkbox" class="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500">
               </th>
               <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Farm Name</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Owner</th>
               <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
               <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
               <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Area</th>
               <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Revenue</th>
               <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -189,10 +186,7 @@
                   </div>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ farm.owner }}</div>
-                <div class="text-xs text-gray-500">{{ farm.contact }}</div>
-              </td>
+            
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">{{ farm.location }}</div>
               </td>
@@ -205,7 +199,7 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ farm.area }} acres</div>
+                <div class="text-sm text-gray-900">{{ farm.area }} {{ farm.unit || 'acres' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span 
@@ -216,9 +210,7 @@
                   {{ farm.status }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">${{ farm.revenue.toLocaleString() }}</div>
-              </td>
+             
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
                 <div class="flex items-center justify-end space-x-2">
                   <button 
@@ -240,7 +232,7 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
                   </button>
-                  <button 
+                  <!-- <button 
                     @click="deleteFarm(farm.id)"
                     class="text-red-600 hover:text-red-800"
                     title="Delete Farm"
@@ -248,7 +240,7 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
-                  </button>
+                  </button> -->
                 </div>
               </td>
             </tr>
@@ -295,19 +287,14 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
-import { useAuthStore } from '~/stores/auth'
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
 
 // Define layout
 definePageMeta({
   layout: 'admin',
   middleware: ['auth']
 })
-const authStore = useAuthStore()
-
-console.log("user is logged in right",authStore.isLoggedIn);
-console.log("user info",authStore.user);
 
 // Filters
 const searchQuery = ref('')
@@ -317,40 +304,90 @@ const currentPage = ref(1)
 const itemsPerPage = 10
 const user = ref(null)
 
-// Sample farms data
-const farms = ref([
-  { id: 'FM001', name: 'Sunrise Valley Farm', owner: 'John Smith', contact: 'john@email.com', location: 'Iowa, USA', type: 'Crop', area: 250, status: 'Active', revenue: 45600 },
-  { id: 'FM002', name: 'Green Meadows', owner: 'Sarah Johnson', contact: 'sarah@email.com', location: 'Nebraska, USA', type: 'Livestock', area: 180, status: 'Active', revenue: 38900 },
-  { id: 'FM003', name: 'Golden Harvest Co.', owner: 'Michael Brown', contact: 'michael@email.com', location: 'Kansas, USA', type: 'Mixed', area: 220, status: 'Active', revenue: 35200 },
-  { id: 'FM004', name: 'Prairie Heights', owner: 'Emily Davis', contact: 'emily@email.com', location: 'Missouri, USA', type: 'Crop', area: 150, status: 'Inactive', revenue: 29800 },
-  { id: 'FM005', name: 'Riverside Acres', owner: 'David Wilson', contact: 'david@email.com', location: 'Illinois, USA', type: 'Organic', area: 195, status: 'Active', revenue: 27500 },
-  { id: 'FM006', name: 'Mountain View Ranch', owner: 'Lisa Anderson', contact: 'lisa@email.com', location: 'Colorado, USA', type: 'Livestock', area: 300, status: 'Active', revenue: 52100 },
-  { id: 'FM007', name: 'Valley Springs Farm', owner: 'Robert Taylor', contact: 'robert@email.com', location: 'Texas, USA', type: 'Mixed', area: 275, status: 'Active', revenue: 48300 },
-  { id: 'FM008', name: 'Hillside Organic', owner: 'Jennifer Lee', contact: 'jennifer@email.com', location: 'California, USA', type: 'Organic', area: 120, status: 'Pending', revenue: 31200 },
-  { id: 'FM009', name: 'Lakeside Farms', owner: 'William Martinez', contact: 'william@email.com', location: 'Minnesota, USA', type: 'Crop', area: 210, status: 'Active', revenue: 42800 },
-  { id: 'FM010', name: 'Sunset Ridge', owner: 'Amanda Garcia', contact: 'amanda@email.com', location: 'Oregon, USA', type: 'Mixed', area: 165, status: 'Active', revenue: 36700 },
-  { id: 'FM011', name: 'Crystal Creek Farm', owner: 'James White', contact: 'james@email.com', location: 'Wisconsin, USA', type: 'Livestock', area: 190, status: 'Inactive', revenue: 28900 },
-  { id: 'FM012', name: 'Autumn Fields', owner: 'Mary Thomas', contact: 'mary@email.com', location: 'Indiana, USA', type: 'Crop', area: 235, status: 'Active', revenue: 44100 }
-])
+type FarmApi = {
+  uuid: string
+  farmer_id: number
+  name: string
+  location: string
+  size: number
+  size_unit: 'acres' | 'hectares' | null
+  established_date: string | null
+  description: string | null
+  type: 'crop' | 'animal' | 'mixed' | string
+  ownership_type: string
+  status: 'active' | 'inactive' | 'pending' | string
+}
+
+type PaginatedFarmsResponse = {
+  current_page: number
+  data: FarmApi[]
+}
+
+type FarmRow = {
+  id: string // uuid
+  name: string
+  owner: string
+  contact: string
+  location: string
+  type: string
+  area: number
+  unit: 'acres' | 'hectares' | null
+  status: string
+}
+
+const nuxtApp = useNuxtApp()
+const apiFetch = nuxtApp.$apiFetch
+
+const isFetching = ref(false)
+const fetchError = ref('')
+
+// Farms list (fetched from API)
+const farms = ref<FarmRow[]>([])
 
 // Computed statistics
 const totalFarms = computed(() => farms.value.length)
 const activeFarms = computed(() => farms.value.filter(f => f.status === 'Active').length)
 const totalArea = computed(() => farms.value.reduce((sum, f) => sum + f.area, 0))
-const avgRevenue = computed(() => Math.round(farms.value.reduce((sum, f) => sum + f.revenue, 0) / farms.value.length))
+const totalAreaUnit = computed(() => farms.value[0]?.unit || 'acres')
+// const avgRevenue = computed(() => Math.round(farms.value.reduce((sum, f) => sum + f.revenue, 0) / farms.value.length))
 
-const { $apiFetch } = useNuxtApp()
+const toTitle = (value: unknown): string => {
+  if (!value) return ''
+  const str = String(value)
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
 onMounted(async () => {
-  const response = await $apiFetch('/api/user');
-  console.log('Fetched farms:', response);
+  isFetching.value = true
+  fetchError.value = ''
+  try {
+    await apiFetch('/sanctum/csrf-cookie')
+    const response = await apiFetch<PaginatedFarmsResponse>('/api/v1/farms')
 
+    farms.value = (response?.data || []).map((farm) => ({
+      id: farm.uuid,
+      name: farm.name,
+      owner: `Farmer #${farm.farmer_id}`,
+      contact: '—',
+      location: farm.location,
+      type: toTitle(farm.type),
+      area: Number(farm.size || 0),
+      unit: farm.size_unit,
+      status: toTitle(farm.status)
+    }))
+  } catch (err) {
+    console.error('Failed to fetch farms:', err)
+    fetchError.value = 'Failed to load farms.'
+  } finally {
+    isFetching.value = false
+  }
 })
 // Filtered farms
 const filteredFarms = computed(() => {
   return farms.value.filter(farm => {
     const matchesSearch = searchQuery.value === '' || 
       farm.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      farm.owner.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      (farm.owner || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       farm.location.toLowerCase().includes(searchQuery.value.toLowerCase())
     
     const matchesStatus = statusFilter.value === '' || 
@@ -398,12 +435,12 @@ const nextPage = () => {
   }
 }
 
-const goToPage = (page) => {
+const goToPage = (page: number) => {
   currentPage.value = page
 }
 
 // Helper methods
-const getStatusColor = (status) => {
+const getStatusColor = (status: string) => {
   const colors = {
     'Active': 'bg-green-100 text-green-800',
     'Inactive': 'bg-gray-100 text-gray-800',
@@ -412,7 +449,7 @@ const getStatusColor = (status) => {
   return colors[status] || 'bg-gray-100 text-gray-800'
 }
 
-const getStatusDot = (status) => {
+const getStatusDot = (status: string) => {
   const colors = {
     'Active': 'bg-green-500',
     'Inactive': 'bg-gray-500',
@@ -421,10 +458,10 @@ const getStatusDot = (status) => {
   return colors[status] || 'bg-gray-500'
 }
 
-const getTypeColor = (type) => {
+const getTypeColor = (type: string) => {
   const colors = {
     'Crop': 'bg-blue-100 text-blue-800',
-    'Livestock': 'bg-purple-100 text-purple-800',
+    'Animal': 'bg-purple-100 text-purple-800',
     'Mixed': 'bg-pink-100 text-pink-800',
     'Organic': 'bg-green-100 text-green-800'
   }
@@ -432,17 +469,17 @@ const getTypeColor = (type) => {
 }
 
 // Action methods
-const viewFarm = (id) => {
+const viewFarm = (id: string) => {
   console.log('View farm:', id)
   // navigateTo(`/admin/farms/${id}`)
 }
 
-const editFarm = (id) => {
+const editFarm = (id: string) => {
   console.log('Edit farm:', id)
   // navigateTo(`/admin/farms/${id}/edit`)
 }
 
-const deleteFarm = (id) => {
+const deleteFarm = (id: string) => {
   if (confirm('Are you sure you want to delete this farm?')) {
     console.log('Delete farm:', id)
     // Handle delete logic
@@ -451,7 +488,7 @@ const deleteFarm = (id) => {
 
 // SEO Meta
 useHead({
-  title: 'Farms Management - FarmManage Pro Admin',
+  title: 'Farms Management - FarmConsul Admin',
   meta: [
     { name: 'description', content: 'Manage and monitor all registered farms in the FarmManage Pro system.' }
   ]

@@ -22,6 +22,6 @@ definePageMeta({
 })
 
 useHead({
-  title: 'Users Management - FarmManage Pro Admin'
+  title: 'Users Management - FarmConsul Admin'
 })
 </script>

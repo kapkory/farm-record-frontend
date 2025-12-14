@@ -96,9 +96,9 @@
 <script setup>
 // SEO Meta
 useHead({
-  title: 'FarmManage Pro - Smart Farm Management System',
+  title: 'FarmConsul - Smart Farm Management System',
   meta: [
-    { name: 'description', content: 'Transform your farming operations with FarmManage Pro. Comprehensive farm management software for modern farmers.' }
+    { name: 'description', content: 'Transform your farming operations with FarmConsul. Comprehensive farm management software for modern farmers.' }
   ]
 })
 </script>

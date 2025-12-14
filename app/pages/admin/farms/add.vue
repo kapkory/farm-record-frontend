@@ -268,26 +268,8 @@ definePageMeta({
 })
 
 const nuxtApp = useNuxtApp()
-const config = useRuntimeConfig()
 
-// Use injected apiFetch if available; otherwise create a compatible fallback
-const apiFetch = (nuxtApp as any).$apiFetch || $fetch.create({
-  baseURL: (config.public.apiBase || '').replace(/\/+$/, ''),
-  credentials: 'include',
-  headers: { Accept: 'application/json' },
-  onRequest({ options }) {
-    if (import.meta.client) {
-      const match = document.cookie.match(/(^|;)\s*XSRF-TOKEN=([^;]+)/)
-      const token = match && match[2] ? decodeURIComponent(match[2]) : null
-      if (token) {
-        (options.headers as any) = {
-          ...(options.headers as any || {}),
-          'X-XSRF-TOKEN': token
-        }
-      }
-    }
-  }
-})
+const apiFetch = nuxtApp.$apiFetch
 const router = useRouter()
 
 // Form data
