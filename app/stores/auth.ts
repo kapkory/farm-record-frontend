@@ -27,8 +27,26 @@ interface ValidationErrors {
 
 export const useAuthStore = defineStore('authStore', () => {
   const nuxtApp = useNuxtApp();
-  // Fallback to $fetch if plugin has not injected $apiFetch yet (defensive)
-  const apiFetch = (nuxtApp as any).$apiFetch || $fetch;
+  const config = useRuntimeConfig();
+  const apiFetch =
+    (nuxtApp as any).$apiFetch ||
+    $fetch.create({
+      baseURL: (config.public.apiBase || '').replace(/\/+$/, ''),
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+      onRequest({ options }) {
+        if (import.meta.client) {
+          const match = document.cookie.match(/(^|;)\s*XSRF-TOKEN=([^;]+)/);
+          const token = match && match[2] ? decodeURIComponent(match[2]) : null;
+          if (token) {
+            (options.headers as any) = {
+              ...(options.headers as any || {}),
+              'X-XSRF-TOKEN': token,
+            };
+          }
+        }
+      },
+    });
   const router = useRouter();
 
   // State
@@ -67,8 +85,9 @@ export const useAuthStore = defineStore('authStore', () => {
         console.log('cookie value is:', document.cookie);
       }
       
+    
       // Login request
-      await nuxtApp.$apiFetch('/login', {
+      await apiFetch('/login', {
         method: 'POST',
         body: {
           email: credentials.email,
@@ -117,7 +136,7 @@ export const useAuthStore = defineStore('authStore', () => {
 
   const fetchUser = async () => {
     try {
-      const userData = await nuxtApp.$apiFetch<Farmer>('/api/user', {
+      const userData = await apiFetch<Farmer>('/api/user', {
         method: 'GET',
       });
 
@@ -136,7 +155,7 @@ export const useAuthStore = defineStore('authStore', () => {
     error.value = null;
 
     try {
-      await nuxtApp.$apiFetch('/logout', {
+      await apiFetch('/logout', {
         method: 'POST',
       });
     } catch (err: any) {
@@ -168,23 +187,16 @@ export const useAuthStore = defineStore('authStore', () => {
       
       if (wasLoggedIn === 'true') {
         try {
-          // Ensure we have CSRF cookie before fetching user
+          // Ensure CSRF cookie before hitting /api/user
           await apiFetch('/sanctum/csrf-cookie');
           await fetchUser();
         } catch (err: any) {
-          console.error('Failed to restore user session:', err);
-          
-          // Only clear localStorage if we get a clear authentication error (401)
-          // This prevents clearing on network errors or other temporary issues
           const status = err?.response?.status || err?.status;
           if (status === 401 || status === 419) {
-            // User session expired or invalid, clear localStorage
             localStorage.removeItem('auth_logged_in');
             farmer.value = null;
             isAuthenticated.value = false;
           }
-          // For other errors (network, 500, etc.), keep the localStorage
-          // The user can try again or the next request might succeed
         }
       }
     }
@@ -204,7 +216,7 @@ export const useAuthStore = defineStore('authStore', () => {
 
     try {
       // Ensure CSRF cookie is set
-      await nuxtApp.$apiFetch('/sanctum/csrf-cookie');
+      await apiFetch('/sanctum/csrf-cookie');
       
       // Small delay to ensure cookie is set in browser
       await new Promise(resolve => setTimeout(resolve, 100));

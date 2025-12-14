@@ -297,12 +297,17 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useAuthStore } from '~/stores/auth'
 
 // Define layout
 definePageMeta({
   layout: 'admin',
   middleware: ['auth']
 })
+const authStore = useAuthStore()
+
+console.log("user is logged in right",authStore.isLoggedIn);
+console.log("user info",authStore.user);
 
 // Filters
 const searchQuery = ref('')

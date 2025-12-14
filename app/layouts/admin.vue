@@ -543,6 +543,7 @@ const handleClickOutside = (event) => {
 import { onMounted, onUnmounted } from 'vue'
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  
 })
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
