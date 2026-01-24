@@ -469,9 +469,8 @@ const getTypeColor = (type: string) => {
 }
 
 // Action methods
-const viewFarm = (id: string) => {
-  console.log('View farm:', id)
-  // navigateTo(`/admin/farms/${id}`)
+const viewFarm = (uuid: string) => {
+  navigateTo(`/admin/farms/farm/${uuid}`)
 }
 
 const editFarm = (id: string) => {
