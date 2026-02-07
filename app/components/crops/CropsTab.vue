@@ -51,7 +51,7 @@
                 <button @click="editItem(item)" class="text-green-600 hover:text-green-900 mr-3">
                   <Pencil class="w-4 h-4" />
                 </button>
-                <button @click="deleteItem(item.id)" class="text-red-600 hover:text-red-900">
+                <button @click="deleteItem(item.uuid)" class="text-red-600 hover:text-red-900">
                   <Trash2 class="w-4 h-4" />
                 </button>
               </td>
@@ -155,6 +155,7 @@ import { Plus, Pencil, Trash2, X } from 'lucide-vue-next'
 
 interface Crop {
   id: number
+  uuid?: string
   name: string
   description: string
   status: 'active' | 'inactive'
@@ -169,7 +170,7 @@ const error = ref<string | null>(null)
 const showModal = ref(false)
 const isEditing = ref(false)
 const submitting = ref(false)
-const editingId = ref<number | null>(null)
+const editingUuid = ref<string | null>(null)
 
 const form = ref({
   name: '',
@@ -184,7 +185,7 @@ const resetForm = () => {
     status: 'active'
   }
   isEditing.value = false
-  editingId.value = null
+  editingUuid.value = null
 }
 
 const openAddModal = () => {
@@ -206,23 +207,23 @@ const submitForm = async () => {
       await $apiFetch('/sanctum/csrf-cookie')
     }
 
-    if (isEditing.value && editingId.value) {
+    if (isEditing.value && editingUuid.value) {
       // Update existing
       if (isOnline.value) {
-        const response = await $apiFetch<{ status: string; message: string; data: Crop }>(`/api/v1/settings/crops/${editingId.value}`, {
+        const response = await $apiFetch<{ status: string; message: string; data: Crop }>(`/api/v1/settings/crops/${editingUuid.value}`, {
           method: 'PUT',
           body: form.value
         })
         // Update local list with server response
-        const index = crops.value.findIndex(c => c.id === editingId.value)
+        const index = crops.value.findIndex(c => c.uuid === editingUuid.value)
         if (index !== -1) {
           crops.value[index] = response.data
         }
       } else {
         // Update local list when offline
-        const index = crops.value.findIndex(c => c.id === editingId.value)
+        const index = crops.value.findIndex(c => c.uuid === editingUuid.value)
         if (index !== -1) {
-          crops.value[index] = { ...crops.value[index], ...form.value }
+          crops.value[index] = { ...crops.value[index], ...form.value } as Crop
         }
       }
     } else {
@@ -235,11 +236,11 @@ const submitForm = async () => {
         })
         newItem = response.data
       } else {
-        // Offline: generate temporary ID
+        // Offline: generate temporary ID (UUID will be assigned by server when synced)
         newItem = {
           id: Date.now(),
           ...form.value
-        }
+        } as Crop
       }
       crops.value.push(newItem)
     }
@@ -281,7 +282,7 @@ const fetchData = async () => {
 
 const editItem = (item: Crop) => {
   isEditing.value = true
-  editingId.value = item.id
+  editingUuid.value = item.uuid
   form.value = {
     name: item.name,
     description: item.description,
@@ -290,18 +291,18 @@ const editItem = (item: Crop) => {
   showModal.value = true
 }
 
-const deleteItem = async (id: number) => {
+const deleteItem = async (uuid: string) => {
   if (!confirm('Are you sure you want to delete this crop?')) return
   
   try {
     if (isOnline.value) {
-      await $apiFetch(`/api/crops/${id}`, { method: 'DELETE' })
+      await $apiFetch('/sanctum/csrf-cookie')
+      await $apiFetch(`/api/v1/settings/crops/${uuid}`, { method: 'DELETE' })
     }
-    crops.value = crops.value.filter(item => item.id !== id)
+    crops.value = crops.value.filter(item => item.uuid !== uuid)
   } catch (err: any) {
     console.error('Failed to delete:', err)
     alert('Failed to delete crop')
-
   }
 }
 
