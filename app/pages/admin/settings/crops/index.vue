@@ -23,7 +23,7 @@
 
     <!-- Tab Content -->
     <div class="mt-4">
-      <CropTypeTab v-if="activeTab === 'type'" />
+      <CropsTab v-if="activeTab === 'crops'" />
       <CropVarietyTab v-if="activeTab === 'variety'" />
     </div>
   </div>
@@ -36,9 +36,9 @@ definePageMeta({
 })
 
 const tabs = [
-  { id: 'type', label: 'Crop Types' },
+  { id: 'crops', label: 'Crops' },
   { id: 'variety', label: 'Crop Varieties' }
 ]
 
-const activeTab = ref('type')
+const activeTab = ref('crops')
 </script>

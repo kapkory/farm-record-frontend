@@ -16,10 +16,10 @@
     <!-- Data Table -->
     <div v-else class="bg-white shadow rounded-lg overflow-hidden">
       <div class="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-        <h3 class="text-lg font-medium text-gray-900">Crop Types</h3>
+        <h3 class="text-lg font-medium text-gray-900">Crops</h3>
         <Button @click="openAddModal">
           <Plus class="w-4 h-4 mr-2" />
-          Add Type
+          Add Crop
         </Button>
       </div>
 
@@ -35,7 +35,7 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="item in cropTypes" :key="item.id" class="hover:bg-gray-50">
+            <tr v-for="item in crops" :key="item.id" class="hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.id }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ item.name }}</td>
               <td class="px-6 py-4 text-sm text-gray-500">{{ item.description }}</td>
@@ -56,9 +56,9 @@
                 </button>
               </td>
             </tr>
-            <tr v-if="cropTypes.length === 0">
+            <tr v-if="crops.length === 0">
               <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                No crop types found. Add your first crop type to get started.
+                No crops found. Add your first crop to get started.
               </td>
             </tr>
           </tbody>
@@ -78,7 +78,7 @@
             <!-- Header -->
             <div class="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 class="text-lg font-semibold text-gray-900">
-                {{ isEditing ? 'Edit Crop Type' : 'Add Crop Type' }}
+                {{ isEditing ? 'Edit Crop' : 'Add Crop' }}
               </h3>
               <button @click="closeModal" class="text-gray-400 hover:text-gray-500">
                 <X class="w-5 h-5" />
@@ -153,7 +153,7 @@
 <script lang="ts" setup>
 import { Plus, Pencil, Trash2, X } from 'lucide-vue-next'
 
-interface CropType {
+interface Crop {
   id: number
   name: string
   description: string
@@ -163,7 +163,7 @@ interface CropType {
 const { $apiFetch } = useNuxtApp()
 const { isOnline } = useOffline()
 
-const cropTypes = ref<CropType[]>([])
+const crops = ref<Crop[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const showModal = ref(false)
@@ -201,28 +201,39 @@ const submitForm = async () => {
   submitting.value = true
   
   try {
+    // Fetch CSRF cookie first
+    if (isOnline.value) {
+      await $apiFetch('/sanctum/csrf-cookie')
+    }
+
     if (isEditing.value && editingId.value) {
       // Update existing
       if (isOnline.value) {
-        await $apiFetch(`/api/crop-types/${editingId.value}`, {
+        const response = await $apiFetch<{ status: string; message: string; data: Crop }>(`/api/v1/settings/crops/${editingId.value}`, {
           method: 'PUT',
           body: form.value
         })
-      }
-      // Update local list
-      const index = cropTypes.value.findIndex(c => c.id === editingId.value)
-      if (index !== -1) {
-        cropTypes.value[index] = { ...cropTypes.value[index], ...form.value }
+        // Update local list with server response
+        const index = crops.value.findIndex(c => c.id === editingId.value)
+        if (index !== -1) {
+          crops.value[index] = response.data
+        }
+      } else {
+        // Update local list when offline
+        const index = crops.value.findIndex(c => c.id === editingId.value)
+        if (index !== -1) {
+          crops.value[index] = { ...crops.value[index], ...form.value }
+        }
       }
     } else {
       // Create new
-      let newItem: CropType
+      let newItem: Crop
       if (isOnline.value) {
-        const response = await $apiFetch<CropType>('/api/crop-types', {
+        const response = await $apiFetch<{ status: string; message: string; data: Crop }>('/api/v1/settings/crops', {
           method: 'POST',
           body: form.value
         })
-        newItem = response
+        newItem = response.data
       } else {
         // Offline: generate temporary ID
         newItem = {
@@ -230,13 +241,13 @@ const submitForm = async () => {
           ...form.value
         }
       }
-      cropTypes.value.push(newItem)
+      crops.value.push(newItem)
     }
     
     closeModal()
   } catch (err: any) {
-    console.error('Failed to save crop type:', err)
-    alert('Failed to save crop type: ' + (err.message || 'Unknown error'))
+    console.error('Failed to save crop:', err)
+    alert('Failed to save crop: ' + (err.message || 'Unknown error'))
   } finally {
     submitting.value = false
   }
@@ -248,35 +259,27 @@ const fetchData = async () => {
   
   try {
     if (isOnline.value) {
+      // Fetch CSRF cookie first
+      await $apiFetch('/sanctum/csrf-cookie')
       // Fetch from backend API
-      const response = await $apiFetch<{ data: CropType[] }>('/api/crop-types')
-      cropTypes.value = response.data || response as unknown as CropType[]
+      const response = await $apiFetch<{ data: Crop[] }>('/api/v1/settings/crops/list')
+      crops.value = response.data || response as unknown as Crop[]
     } else {
       // Load from local JSON when offline (fallback)
-      cropTypes.value = [
-        { id: 1, name: 'Cereals', description: 'Grains like wheat, rice, maize', status: 'active' },
-        { id: 2, name: 'Legumes', description: 'Beans, lentils, peas', status: 'active' },
-        { id: 3, name: 'Vegetables', description: 'Leafy greens, root vegetables', status: 'active' },
-        { id: 4, name: 'Fruits', description: 'Tree and vine fruits', status: 'active' },
-        { id: 5, name: 'Tubers', description: 'Potatoes, cassava, yams', status: 'inactive' }
-      ]
+      crops.value = []
     }
   } catch (err: any) {
-    console.error('Failed to fetch crop types:', err)
+    console.error('Failed to fetch crops:', err)
     error.value = err.message || 'An error occurred while loading data'
     // Fallback to sample data on error
-    cropTypes.value = [
-      { id: 1, name: 'Cereals', description: 'Grains like wheat, rice, maize', status: 'active' },
-      { id: 2, name: 'Legumes', description: 'Beans, lentils, peas', status: 'active' },
-      { id: 3, name: 'Vegetables', description: 'Leafy greens, root vegetables', status: 'active' }
-    ]
+    crops.value = []
     error.value = null // Clear error since we have fallback data
   } finally {
     loading.value = false
   }
 }
 
-const editItem = (item: CropType) => {
+const editItem = (item: Crop) => {
   isEditing.value = true
   editingId.value = item.id
   form.value = {
@@ -288,16 +291,17 @@ const editItem = (item: CropType) => {
 }
 
 const deleteItem = async (id: number) => {
-  if (!confirm('Are you sure you want to delete this crop type?')) return
+  if (!confirm('Are you sure you want to delete this crop?')) return
   
   try {
     if (isOnline.value) {
-      await $apiFetch(`/api/crop-types/${id}`, { method: 'DELETE' })
+      await $apiFetch(`/api/crops/${id}`, { method: 'DELETE' })
     }
-    cropTypes.value = cropTypes.value.filter(item => item.id !== id)
+    crops.value = crops.value.filter(item => item.id !== id)
   } catch (err: any) {
     console.error('Failed to delete:', err)
-    alert('Failed to delete crop type')
+    alert('Failed to delete crop')
+
   }
 }
 
