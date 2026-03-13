@@ -67,9 +67,13 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button class="text-green-600 hover:text-green-900 mr-3" title="View">
+                <!-- <button class="text-green-600 hover:text-green-900 mr-3" title="View">
                   <Eye class="w-4 h-4" />
-                </button>
+                </button> -->
+                <a :href="`/admin/farms/farm/planting/${planting.uuid}`" 
+                class="inline-flex items-center text-green-600 hover:text-green-900 mr-3" title="View">
+                  <Eye class="w-4 h-4" />
+                </a>
                 <button class="text-gray-600 hover:text-gray-900" title="Edit">
                   <Pencil class="w-4 h-4" />
                 </button>
