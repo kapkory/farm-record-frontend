@@ -21,7 +21,7 @@
             </svg>
           </div>
           <div>
-            <h1 class="text-lg font-bold text-gray-900">FarmManage</h1>
+            <h1 class="text-lg font-bold text-gray-900">FarmConsul</h1>
             <p class="text-xs text-gray-500">Admin Portal</p>
           </div>
         </div>
@@ -296,6 +296,12 @@
               class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
             >
               Livestock
+            </NuxtLink>
+            <NuxtLink 
+              to="/admin/settings/system"
+              class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
+            >
+              System Settings
             </NuxtLink>
            
           </div>

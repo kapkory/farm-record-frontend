@@ -76,36 +76,26 @@
             <p class="text-xs text-gray-500 uppercase tracking-wide">Total Expenses</p>
             <p class="text-sm font-semibold text-gray-900 mt-0.5">{{ formatCurrency(totalExpenses) }}</p>
           </div>
-        </div>
-      </div>
-
-   
-
-      <!-- Detail Card -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-lg font-semibold text-gray-900">Planting Details</h2>
-        </div>
-        <div class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        
-          <div>
-            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Date Planted</p>
-            <p class="text-sm font-semibold text-gray-900 mt-1">{{ planting.date_planted }}</p>
+             <div class="px-5 py-3">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">Date Planted</p>
+            <p class="text-sm font-semibold text-gray-900 mt-0.5 truncate">{{ planting.date_planted ?? '—' }}</p>
           </div>
-          <div>
-            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Expected Harvest</p>
-            <p class="text-sm font-semibold text-gray-900 mt-1">{{ planting.expected_harvest_date ?? '—' }}</p>
+          <div class="px-5 py-3">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">Expected Harvest Date</p>
+            <p class="text-sm font-semibold text-gray-900 mt-0.5 truncate">{{ planting.expected_harvest_date ?? '—' }}</p>
           </div>
-          <div>
-            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Actual Harvest</p>
-            <p class="text-sm font-semibold text-gray-900 mt-1">{{ planting.actual_harvest_date ?? 'Not yet harvested' }}</p>
+          <div class="px-5 py-3">
+            <p class="text-xs text-gray-500 uppercase tracking-wide">Actual Harvest Date</p>
+            <p class="text-sm font-semibold text-gray-900 mt-0.5">{{ planting.actual_harvest_date ?? '—' }}</p>
           </div>
-          <div v-if="planting.description" class="sm:col-span-2 md:col-span-3">
+         <div v-if="planting.description" class="sm:col-span-2 md:col-span-3">
             <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Notes / Description</p>
             <p class="text-sm text-gray-700 mt-1 whitespace-pre-line">{{ planting.description }}</p>
           </div>
         </div>
       </div>
+
+  
 
       <!-- Expenses Section -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200">
