@@ -117,6 +117,18 @@
                 </div>
               </div>
 
+              <div class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 sm:flex-row sm:items-center">
+                <label class="inline-flex items-center gap-3">
+                  <input v-model="harvestForm.record_expense" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500" />
+                  <span class="text-sm font-medium text-gray-900">Record Expense</span>
+                </label>
+
+                <div v-if="harvestForm.record_expense" class="sm:w-64">
+                  <Input id="harvest_expense_amount" v-model="harvestForm.expense_amount" type="number" min="0" step="0.01" class="w-full" placeholder="Expense Amount" />
+                  <p v-if="formErrors.expense_amount" class="mt-1 text-xs text-red-600">{{ formErrors.expense_amount }}</p>
+                </div>
+              </div>
+
               <div>
                 <Label for="harvest_notes" class="mb-1 block text-sm font-medium text-gray-700">Notes</Label>
                 <textarea id="harvest_notes" v-model="harvestForm.notes" rows="4" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Add anything important about this harvest in simple words"></textarea>
@@ -166,7 +178,7 @@ interface HarvestRecord {
   notes?: string | null
 }
 
-type HarvestFormErrorKey = 'name' | 'date' | 'trace_number' | 'quantity' | 'unit' | 'grade' | 'notes'
+type HarvestFormErrorKey = 'name' | 'date' | 'trace_number' | 'quantity' | 'unit' | 'grade' | 'notes' | 'expense_amount'
 
 type HarvestValidationErrors = Partial<Record<HarvestFormErrorKey, string>>
 
@@ -194,7 +206,9 @@ const createDefaultForm = () => ({
   quantity: '',
   unit: '',
   grade: '',
-  notes: ''
+  notes: '',
+  record_expense: false,
+  expense_amount: ''
 })
 
 const harvests = ref<HarvestRecord[]>([])
@@ -255,6 +269,7 @@ const setValidationErrors = (errors: Record<string, string[] | string> | undefin
     if (key === 'unit') mapped.unit = message
     if (key === 'grade') mapped.grade = message
     if (key === 'notes') mapped.notes = message
+    if (key === 'expense_amount') mapped.expense_amount = message
   }
 
   formErrors.value = mapped
@@ -287,6 +302,13 @@ const fetchHarvests = async () => {
 const saveHarvest = async () => {
   if (!plantingUuidValue.value) return
 
+  if (harvestForm.value.record_expense && !harvestForm.value.expense_amount) {
+    submitError.value = 'Please enter the expense amount before saving.'
+    formErrors.value = { expense_amount: 'Please enter the expense amount before saving.' }
+    errorList.value = ['Please enter the expense amount before saving.']
+    return
+  }
+
   submitting.value = true
   submitError.value = null
   formErrors.value = {}
@@ -301,7 +323,9 @@ const saveHarvest = async () => {
     quantity: Number(harvestForm.value.quantity),
     unit: harvestForm.value.unit || null,
     grade: harvestForm.value.grade || null,
-    notes: harvestForm.value.notes || null
+    notes: harvestForm.value.notes || null,
+    record_expense: harvestForm.value.record_expense,
+    expense_amount: harvestForm.value.record_expense ? Number(harvestForm.value.expense_amount) : null
   }
 
   try {
