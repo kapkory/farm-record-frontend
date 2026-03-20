@@ -53,64 +53,68 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 divide-x divide-gray-100 border-t border-gray-100 bg-gray-50 md:grid-cols-4">
-          <div class="px-5 py-3">
+        <div class="grid grid-cols-2 border-t border-gray-100 bg-gray-50 md:grid-cols-4">
+          <div class="border-b border-gray-100 px-5 py-3 md:border-r">
             <p class="text-xs uppercase tracking-wide text-gray-500">Farm</p>
             <p class="mt-0.5 truncate text-sm font-semibold text-gray-900">{{ planting.farm?.name ?? '—' }}</p>
           </div>
-          <div class="px-5 py-3">
+          <div class="border-b border-gray-100 px-5 py-3 md:border-r">
             <p class="text-xs uppercase tracking-wide text-gray-500">Field</p>
             <p class="mt-0.5 truncate text-sm font-semibold text-gray-900">{{ planting.field?.name ?? '—' }}</p>
             <p v-if="planting.field?.size" class="text-xs text-gray-400">{{ planting.field.size }}</p>
           </div>
-          <div class="px-5 py-3">
+          <div class="border-b border-gray-100 px-5 py-3 md:border-r">
             <p class="text-xs uppercase tracking-wide text-gray-500">Qty Planted</p>
             <p class="mt-0.5 text-sm font-semibold text-gray-900">{{ planting.quantity_planted ?? '—' }}</p>
           </div>
-          <div class="px-5 py-3">
+          <div class="border-b border-gray-100 px-5 py-3">
             <p class="text-xs uppercase tracking-wide text-gray-500">Total Recorded</p>
             <p class="mt-0.5 text-sm font-semibold text-gray-900">{{ formatCurrency(totalRecordedAmount) }}</p>
           </div>
-        </div>
-      </div>
-
-      <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div class="border-b border-gray-200 px-6 py-4">
-          <h2 class="text-lg font-semibold text-gray-900">Planting Details</h2>
-        </div>
-        <div class="grid grid-cols-1 gap-6 p-6 sm:grid-cols-2 md:grid-cols-3">
-          <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Crop</p>
-            <p class="mt-1 text-sm font-semibold text-gray-900">{{ planting.crop?.name ?? '—' }}</p>
+          <div class="border-b border-gray-100 px-5 py-3 md:border-r md:border-b-0">
+            <p class="text-xs uppercase tracking-wide text-gray-500">Date Planted</p>
+            <p class="mt-0.5 text-sm font-semibold text-gray-900">{{ planting.date_planted }}</p>
           </div>
-          <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Variety</p>
-            <p class="mt-1 text-sm font-semibold text-gray-900">{{ planting.crop_variety?.name ?? '—' }}</p>
+          <div class="border-b border-gray-100 px-5 py-3 md:border-r md:border-b-0">
+            <p class="text-xs uppercase tracking-wide text-gray-500">Expected Harvest</p>
+            <p class="mt-0.5 text-sm font-semibold text-gray-900">{{ planting.expected_harvest_date ?? '—' }}</p>
           </div>
-          <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Date Planted</p>
-            <p class="mt-1 text-sm font-semibold text-gray-900">{{ planting.date_planted }}</p>
+          <div class="border-b border-gray-100 px-5 py-3 md:border-r md:border-b-0">
+            <p class="text-xs uppercase tracking-wide text-gray-500">Actual Harvest</p>
+            <p class="mt-0.5 text-sm font-semibold text-gray-900">{{ planting.actual_harvest_date ?? 'Not yet harvested' }}</p>
           </div>
-          <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Expected Harvest</p>
-            <p class="mt-1 text-sm font-semibold text-gray-900">{{ planting.expected_harvest_date ?? '—' }}</p>
+          <div class="border-b border-gray-100 px-5 py-3 md:border-b-0">
+            <p class="text-xs uppercase tracking-wide text-gray-500">Purpose</p>
+            <p class="mt-0.5 text-sm font-semibold capitalize text-gray-900">{{ planting.purpose ?? '—' }}</p>
           </div>
-          <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Actual Harvest</p>
-            <p class="mt-1 text-sm font-semibold text-gray-900">{{ planting.actual_harvest_date ?? 'Not yet harvested' }}</p>
-          </div>
-          <div>
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Purpose</p>
-            <p class="mt-1 text-sm font-semibold capitalize text-gray-900">{{ planting.purpose ?? '—' }}</p>
-          </div>
-          <div v-if="planting.description" class="sm:col-span-2 md:col-span-3">
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Notes / Description</p>
-            <p class="mt-1 whitespace-pre-line text-sm text-gray-700">{{ planting.description }}</p>
+          <div class="col-span-2 px-5 py-3 md:col-span-4">
+            <p class="text-xs uppercase tracking-wide text-gray-500">Notes / Description</p>
+            <p class="mt-0.5 whitespace-pre-line text-sm text-gray-700">{{ planting.description ?? 'No additional notes recorded.' }}</p>
           </div>
         </div>
       </div>
 
       <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div class="border-b border-gray-200 bg-white px-4 py-3 sm:px-6">
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="tab in plantingTabs"
+              :key="tab.value"
+              type="button"
+              @click="activeTab = tab.value"
+              :class="[
+                'rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                activeTab === tab.value
+                  ? 'border-green-500 bg-green-50 text-green-700'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900'
+              ]"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="activeTab === 'overview'">
         <div class="flex flex-col gap-4 border-b border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 class="text-lg font-semibold text-gray-900">Ledger Transactions</h2>
@@ -122,54 +126,130 @@
           </button>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 border-b border-gray-100 bg-gray-50 px-6 py-4 md:grid-cols-5">
-          <div v-for="type in ledgerTypeOptions" :key="type.value" class="rounded-lg border border-white/60 bg-white px-3 py-2">
-            <p class="text-xs uppercase tracking-wide text-gray-500">{{ type.label }}</p>
-            <p class="mt-1 text-sm font-semibold text-gray-900">{{ ledgerTypeCount(type.value) }} entries</p>
-            <p class="text-xs" :class="type.textClass">{{ formatCurrency(ledgerTypeTotal(type.value)) }}</p>
+        <div class="grid gap-0 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div class="min-w-0 border-b border-gray-200 xl:border-b-0 xl:border-r xl:border-gray-200">
+            <div class="grid grid-cols-2 gap-4 border-b border-gray-100 bg-gray-50 px-6 py-4 md:grid-cols-5">
+              <div v-for="type in ledgerTypeOptions" :key="type.value" class="rounded-lg border border-white/60 bg-white px-3 py-2">
+                <p class="text-xs uppercase tracking-wide text-gray-500">{{ type.label }}</p>
+                <p class="mt-1 text-sm font-semibold text-gray-900">{{ ledgerTypeCount(type.value) }} entries</p>
+                <p class="text-xs" :class="type.textClass">{{ formatCurrency(ledgerTypeTotal(type.value)) }}</p>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Account</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Payment</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Qty</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Unit Cost</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Amount</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Receipt No.</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Notes</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                  <tr v-for="transaction in ledgerTransactions" :key="transaction.id" class="hover:bg-gray-50">
+                    <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ transaction.date }}</td>
+                    <td class="whitespace-nowrap px-6 py-4">
+                      <span :class="['inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold', ledgerTypeConfig(transaction.type).pillClass]">
+                        <span>{{ ledgerTypeConfig(transaction.type).emoji }}</span>
+                        {{ ledgerTypeConfig(transaction.type).label }}
+                      </span>
+                    </td>
+                    <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">{{ transaction.account_name }}</td>
+                    <td class="whitespace-nowrap px-6 py-4 text-sm capitalize text-gray-500">{{ transaction.payment_method ?? '—' }}</td>
+                    <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ transaction.quantity ?? '—' }}</td>
+                    <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ transaction.unit_cost ? formatCurrency(transaction.unit_cost) : '—' }}</td>
+                    <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-semibold text-gray-900">{{ formatCurrency(transaction.amount) }}</td>
+                    <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ transaction.reference_number ?? '—' }}</td>
+                    <td class="max-w-xs px-6 py-4 text-sm text-gray-500">{{ transaction.notes ?? '—' }}</td>
+                  </tr>
+                  <tr v-if="!ledgerTransactions.length">
+                    <td colspan="9" class="px-6 py-10 text-center text-sm text-gray-500">
+                      No ledger transactions recorded yet.
+                      <button @click="openLedgerModal" class="ml-1 text-green-600 underline hover:no-underline">Record the first transaction.</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="border-t border-gray-200 bg-gray-50 px-6 py-5">
+              <div class="rounded-lg border border-gray-200 bg-white px-4 py-4">
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-sm font-medium text-gray-700">Recovery progress</p>
+                  <p class="text-sm font-semibold text-gray-900">{{ recoveryRateLabel }}</p>
+                </div>
+                <div class="mt-3 h-3 overflow-hidden rounded-full bg-gray-200">
+                  <div class="h-full rounded-full bg-green-500 transition-all" :style="{ width: recoveryProgressWidth }"></div>
+                </div>
+                <p class="mt-3 text-sm text-gray-600">{{ breakEvenMessage }}</p>
+              </div>
+            </div>
+          </div>
+
+          <aside class="bg-gray-50 p-6">
+            <div class="space-y-4">
+  
+              <div class="rounded-lg border border-green-100 bg-green-50 px-4 py-2">
+                <p class="text-xs font-semibold uppercase tracking-wide text-green-700">Money In</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900">{{ formatCurrency(moneyInTotal) }}</p>
+                <p class="mt-1 text-sm text-green-800">Sales and other income recorded for this planting.</p>
+              </div>
+
+              <div class="rounded-lg border border-red-100 bg-red-50 px-4 py-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-red-700">Money Out</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900">{{ formatCurrency(moneyOutTotal) }}</p>
+                <p class="mt-1 text-sm text-red-800">Seeds, labour, chemicals, transport, and other costs recorded.</p>
+              </div>
+
+              <div :class="['rounded-lg border px-4 py-4', netResultCardClass]">
+                <p class="text-xs font-semibold uppercase tracking-wide" :class="profitabilityAccentClass">Net Result</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900">{{ formatCurrency(Math.abs(netProfit)) }}</p>
+                <p class="mt-1 text-sm text-gray-700">{{ netResultDescription }}</p>
+              </div>
+
+              <div class="rounded-lg border border-gray-200 bg-white px-4 py-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-600">Cost Recovery</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900">{{ recoveryRateLabel }}</p>
+                <p class="mt-1 text-sm text-gray-600">{{ recoveryMessage }}</p>
+              </div>
+
+              <div class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                This summary only uses <span class="font-semibold">Money In</span> and <span class="font-semibold">Money Out</span> to show profit. Assets, loans, and owner capital are still recorded here, but they are not counted as profit.
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        </div>
+
+        <div v-else-if="activeTab === 'treatments'" class="p-6">
+          <div class="rounded-lg border border-amber-200 bg-amber-50 p-5">
+            <h2 class="text-lg font-semibold text-gray-900">Treatments</h2>
+            <p class="mt-2 text-sm text-gray-700">Record spraying, fertiliser application, pest control, disease treatment, and any other care given to this planting.</p>
+            <div class="mt-4 rounded-lg border border-dashed border-amber-300 bg-white p-5 text-sm text-gray-600">
+              No treatments have been added yet. This tab is ready for planting care records when you connect the treatment workflow.
+            </div>
           </div>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Date</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Type</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Account</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Payment</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Qty</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Unit Cost</th>
-                <th class="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Amount</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Receipt No.</th>
-                <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Notes</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 bg-white">
-              <tr v-for="transaction in ledgerTransactions" :key="transaction.id" class="hover:bg-gray-50">
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ transaction.date }}</td>
-                <td class="whitespace-nowrap px-6 py-4">
-                  <span :class="['inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold', ledgerTypeConfig(transaction.type).pillClass]">
-                    <span>{{ ledgerTypeConfig(transaction.type).emoji }}</span>
-                    {{ ledgerTypeConfig(transaction.type).label }}
-                  </span>
-                </td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">{{ transaction.account_name }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm capitalize text-gray-500">{{ transaction.payment_method ?? '—' }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ transaction.quantity ?? '—' }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ transaction.unit_cost ? formatCurrency(transaction.unit_cost) : '—' }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-semibold text-gray-900">{{ formatCurrency(transaction.amount) }}</td>
-                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ transaction.reference_number ?? '—' }}</td>
-                <td class="max-w-xs px-6 py-4 text-sm text-gray-500">{{ transaction.notes ?? '—' }}</td>
-              </tr>
-              <tr v-if="!ledgerTransactions.length">
-                <td colspan="9" class="px-6 py-10 text-center text-sm text-gray-500">
-                  No ledger transactions recorded yet.
-                  <button @click="openLedgerModal" class="ml-1 text-green-600 underline hover:no-underline">Record the first transaction.</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-else-if="activeTab === 'tasks'" class="p-6">
+          <div class="rounded-lg border border-sky-200 bg-sky-50 p-5">
+            <h2 class="text-lg font-semibold text-gray-900">Tasks</h2>
+            <p class="mt-2 text-sm text-gray-700">Track work that needs to be done for this planting, such as weeding, irrigation, scouting, or harvesting preparation.</p>
+            <div class="mt-4 rounded-lg border border-dashed border-sky-300 bg-white p-5 text-sm text-gray-600">
+              No tasks have been added yet. This space can show upcoming work, assigned workers, and completion status.
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="p-6">
+          <Harvest :crop-name="planting.crop?.name ?? 'Harvest'" :planting-uuid="planting.uuid" />
         </div>
       </div>
     </template>
@@ -347,6 +427,8 @@ interface Planting {
   description: string | null
 }
 
+type PlantingTab = 'overview' | 'treatments' | 'tasks' | 'harvests'
+
 type LedgerType = 'revenue' | 'expense' | 'asset' | 'liability' | 'equity'
 
 interface LedgerAccount {
@@ -468,6 +550,7 @@ const ledgerTypeConfig = (type: LedgerType) => {
 const planting = ref<Planting | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const activeTab = ref<PlantingTab>('overview')
 const showAddLedgerModal = ref(false)
 const ledgerSubmitting = ref(false)
 const ledgerSubmitError = ref<string | null>(null)
@@ -477,6 +560,13 @@ const ledgerAccounts = ref<LedgerAccount[]>([])
 const ledgerTransactions = ref<LedgerTransactionRow[]>([])
 const ledgerAccountSearch = ref('')
 const showLedgerAccountResults = ref(false)
+
+const plantingTabs: Array<{ value: PlantingTab; label: string }> = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'treatments', label: 'Treatments' },
+  { value: 'tasks', label: 'Tasks' },
+  { value: 'harvests', label: 'Harvests' }
+]
 
 const defaultLedgerForm = () => ({
   type: 'expense' as LedgerType,
@@ -529,6 +619,116 @@ const computedUnitCostDisplay = computed(() =>
 const totalRecordedAmount = computed(() =>
   ledgerTransactions.value.reduce((sum, transaction) => sum + transaction.amount, 0)
 )
+
+const moneyInTotal = computed(() => ledgerTypeTotal('revenue'))
+
+const moneyOutTotal = computed(() => ledgerTypeTotal('expense'))
+
+const netProfit = computed(() => moneyInTotal.value - moneyOutTotal.value)
+
+const recoveryRate = computed(() => {
+  if (moneyOutTotal.value <= 0) return moneyInTotal.value > 0 ? 100 : 0
+  return (moneyInTotal.value / moneyOutTotal.value) * 100
+})
+
+const recoveryRateLabel = computed(() => `${Math.round(recoveryRate.value)}%`)
+
+const recoveryProgressWidth = computed(() => `${Math.min(Math.max(recoveryRate.value, 0), 100)}%`)
+
+const profitabilityState = computed<'no-data' | 'cost-only' | 'loss' | 'break-even' | 'profit'>(() => {
+  if (moneyInTotal.value <= 0 && moneyOutTotal.value <= 0) return 'no-data'
+  if (moneyInTotal.value <= 0 && moneyOutTotal.value > 0) return 'cost-only'
+  if (netProfit.value < 0) return 'loss'
+  if (netProfit.value === 0) return 'break-even'
+  return 'profit'
+})
+
+const profitabilityHeadline = computed(() => {
+  switch (profitabilityState.value) {
+    case 'profit':
+      return 'This planting is making money'
+    case 'break-even':
+      return 'This planting has covered its costs'
+    case 'loss':
+      return 'This planting is still below break-even'
+    case 'cost-only':
+      return 'Costs are recorded, but sales are not yet recorded'
+    default:
+      return 'Start recording sales and costs for this planting'
+  }
+})
+
+const profitabilityMessage = computed(() => {
+  switch (profitabilityState.value) {
+    case 'profit':
+      return `You have recovered all recorded costs and are ahead by ${formatCurrency(netProfit.value)}.`
+    case 'break-even':
+      return 'Money in and money out are equal, so this planting is currently neither making a profit nor a loss.'
+    case 'loss':
+      return `You need ${formatCurrency(Math.abs(netProfit.value))} more in sales to recover the recorded costs.`
+    case 'cost-only':
+      return `You have recorded ${formatCurrency(moneyOutTotal.value)} in costs, but no income yet for this planting.`
+    default:
+      return 'Once you record money in and money out, this page will show whether the planting is profitable.'
+  }
+})
+
+const profitOrLossLabel = computed(() => {
+  if (profitabilityState.value === 'profit') return `${formatCurrency(netProfit.value)} profit`
+  if (profitabilityState.value === 'break-even') return 'Break-even'
+  if (profitabilityState.value === 'no-data') return 'No records yet'
+  return `${formatCurrency(Math.abs(netProfit.value || moneyOutTotal.value))} to recover`
+})
+
+const netResultDescription = computed(() => {
+  if (profitabilityState.value === 'profit') return 'This is what remains after paying the recorded costs.'
+  if (profitabilityState.value === 'break-even') return 'All recorded costs have been covered.'
+  if (profitabilityState.value === 'no-data') return 'Add transactions to see the result here.'
+  return 'This is the amount still needed to reach break-even.'
+})
+
+const recoveryMessage = computed(() => {
+  if (profitabilityState.value === 'no-data') return 'No sales or costs recorded yet.'
+  if (profitabilityState.value === 'cost-only') return 'You have started recording costs. Add sales when harvest is sold.'
+  if (profitabilityState.value === 'profit') return 'Your recorded income is above your recorded costs.'
+  if (profitabilityState.value === 'break-even') return 'You have recovered 100% of the recorded costs.'
+  return 'This shows how much of the recorded cost has already been recovered.'
+})
+
+const breakEvenMessage = computed(() => {
+  if (profitabilityState.value === 'no-data') return 'Record spending and sales to track break-even for this planting.'
+  if (profitabilityState.value === 'profit') return `Break-even reached. This planting is ahead by ${formatCurrency(netProfit.value)}.`
+  if (profitabilityState.value === 'break-even') return 'Break-even reached. Every recorded cost has been covered.'
+  return `Break-even gap: ${formatCurrency(Math.max(moneyOutTotal.value - moneyInTotal.value, 0))} still needed.`
+})
+
+const profitabilityBannerClass = computed(() => {
+  if (profitabilityState.value === 'profit') return 'border-green-200 bg-green-50'
+  if (profitabilityState.value === 'break-even') return 'border-blue-200 bg-blue-50'
+  if (profitabilityState.value === 'no-data') return 'border-gray-200 bg-gray-50'
+  return 'border-amber-200 bg-amber-50'
+})
+
+const profitabilityAccentClass = computed(() => {
+  if (profitabilityState.value === 'profit') return 'text-green-700'
+  if (profitabilityState.value === 'break-even') return 'text-blue-700'
+  if (profitabilityState.value === 'no-data') return 'text-gray-600'
+  return 'text-amber-700'
+})
+
+const profitOrLossClass = computed(() => {
+  if (profitabilityState.value === 'profit') return 'text-green-700'
+  if (profitabilityState.value === 'break-even') return 'text-blue-700'
+  if (profitabilityState.value === 'no-data') return 'text-gray-700'
+  return 'text-amber-700'
+})
+
+const netResultCardClass = computed(() => {
+  if (profitabilityState.value === 'profit') return 'border-green-100 bg-green-50'
+  if (profitabilityState.value === 'break-even') return 'border-blue-100 bg-blue-50'
+  if (profitabilityState.value === 'no-data') return 'border-gray-200 bg-gray-50'
+  return 'border-amber-100 bg-amber-50'
+})
 
 const ledgerTypeCount = (type: LedgerType) =>
   ledgerTransactions.value.filter((transaction) => transaction.type === type).length
@@ -704,7 +904,7 @@ const fetchLedgerAccounts = async () => {
     }
 
     await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data: LedgerAccount[] }>('/api/v1/settings/system/ledgeraccounts/list')
+    const response = await $apiFetch<{ data: LedgerAccount[] }>('/api/v1/settings/system/ledgeraccount/list')
     ledgerAccounts.value = response.data ?? []
   } catch (err) {
     console.error('Failed to fetch ledger accounts:', err)

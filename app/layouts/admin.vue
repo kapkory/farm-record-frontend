@@ -49,97 +49,58 @@
           <span class="font-medium">Dashboard</span>
         </NuxtLink>
 
-        <!-- Farms with Dropdown -->
-        <div>
-          <button 
-            @click="toggleDropdown('farms')"
-            class="w-full flex items-center justify-between px-4 py-3 text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
-            :class="{'bg-green-50 text-green-600': $route.path.startsWith('/admin/farms')}"
-          >
-            <div class="flex items-center">
-              <!-- Barn/Farm Icon -->
-              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+         <!-- My Farms -->
+        <NuxtLink 
+          to="/admin/farms"
+          class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M5 21c10 0 14-8 14-16-8 0-16 4-16 14 0 1.5.5 2 2 2z"/>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M5 21c0-6 6-10 14-16"/>
             </svg>
-              <span class="font-medium">Farms</span>
-            </div>
-            <svg 
-              class="w-4 h-4 transition-transform duration-200"
-              :class="{'rotate-180': openDropdowns.farms}"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
-          </button>
-          <div 
-            v-show="openDropdowns.farms"
-            class="ml-4 mt-1 space-y-1"
-          >
-            <NuxtLink 
-              to="/admin/farms"
-              class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
-              :class="{'bg-green-50 text-green-600': $route.path === '/admin/farms'}"
-            >
-              All Farms
-            </NuxtLink>
-            <NuxtLink 
-              to="/admin/farms/add"
-              class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
-              :class="{'bg-green-50 text-green-600': $route.path === '/admin/farms/add'}"
-            >
-              Add New Farm
-            </NuxtLink>
-      
-          </div>
-        </div>
+          <span class="font-medium">My Farms</span>
+        </NuxtLink>
 
-        <!-- Crops with Dropdown -->
+        <!-- Plantings with Dropdown -->
         <div>
           <button 
-            @click="toggleDropdown('crops')"
+            @click="toggleDropdown('plantings')"
             class="w-full flex items-center justify-between px-4 py-3 text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
-            :class="{'bg-green-50 text-green-600': $route.path.startsWith('/admin/crops')}"
+            :class="{'bg-green-50 text-green-600': $route.path.startsWith('/admin/plantings')}"
           >
             <div class="flex items-center">
               <!-- Seedling/Plant Growing Icon -->
               <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/>
               </svg>
-              <span class="font-medium">Crops</span>
+              <span class="font-medium">My Plantings</span>
             </div>
             <svg 
               class="w-4 h-4 transition-transform duration-200"
-              :class="{'rotate-180': openDropdowns.crops}"
+              :class="{'rotate-180': openDropdowns.plantings}"
               fill="none" stroke="currentColor" viewBox="0 0 24 24"
             >
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
           </button>
           <div 
-            v-show="openDropdowns.crops"
+            v-show="openDropdowns.plantings"
             class="ml-4 mt-1 space-y-1"
           >
             <NuxtLink 
-              to="/admin/crops"
+              to="/admin/plantings"
               class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
             >
-              All Crops
+              All Plantings
             </NuxtLink>
             <NuxtLink 
-              to="/admin/crops/planting"
-              class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
-            >
-              Planting Schedule
+              to="/admin/farms/farm/new-planting"
+               class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"            >
+              Add Planting
             </NuxtLink>
-            <NuxtLink 
-              to="/admin/crops/harvest"
-              class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
-            >
-              Harvest Records
-            </NuxtLink>
+    
           </div>
         </div>
 
