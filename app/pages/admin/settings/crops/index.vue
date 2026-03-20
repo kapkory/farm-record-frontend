@@ -25,6 +25,7 @@
     <div class="mt-4">
       <CropsTab v-if="activeTab === 'crops'" />
       <CropVarietyTab v-if="activeTab === 'variety'" />
+      <TreatmentType v-if="activeTab === 'treatments'" />
     </div>
   </div>
 </template>
@@ -37,7 +38,8 @@ definePageMeta({
 
 const tabs = [
   { id: 'crops', label: 'Crops' },
-  { id: 'variety', label: 'Crop Varieties' }
+  { id: 'variety', label: 'Crop Varieties' },
+  { id: 'treatments', label: 'Treatment Types' }
 ]
 
 const activeTab = ref('crops')
