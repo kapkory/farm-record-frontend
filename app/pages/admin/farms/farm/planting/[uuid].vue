@@ -101,7 +101,7 @@
               v-for="tab in plantingTabs"
               :key="tab.value"
               type="button"
-              @click="activeTab = tab.value"
+              @click="handleTabChange(tab.value)"
               :class="[
                 'rounded-full border px-4 py-2 text-sm font-medium transition-colors',
                 activeTab === tab.value
@@ -229,13 +229,7 @@
         </div>
 
         <div v-else-if="activeTab === 'treatments'" class="p-6">
-          <div class="rounded-lg border border-amber-200 bg-amber-50 p-5">
-            <h2 class="text-lg font-semibold text-gray-900">Treatments</h2>
-            <p class="mt-2 text-sm text-gray-700">Record spraying, fertiliser application, pest control, disease treatment, and any other care given to this planting.</p>
-            <div class="mt-4 rounded-lg border border-dashed border-amber-300 bg-white p-5 text-sm text-gray-600">
-              No treatments have been added yet. This tab is ready for planting care records when you connect the treatment workflow.
-            </div>
-          </div>
+          <Treatment :farm-id="planting.farm?.uuid ?? ''" :planting-uuid="planting.uuid" />
         </div>
 
         <div v-else-if="activeTab === 'tasks'" class="p-6">
@@ -738,6 +732,16 @@ const ledgerTypeTotal = (type: LedgerType) =>
     .filter((transaction) => transaction.type === type)
     .reduce((sum, transaction) => sum + transaction.amount, 0)
 
+const handleTabChange = (tab: PlantingTab) => {
+  if (activeTab.value === tab) return
+
+  activeTab.value = tab
+
+  if (tab === 'overview') {
+    fetchLedgerTransactions()
+  }
+}
+
 const selectLedgerType = (type: LedgerType) => {
   ledgerForm.value.type = type
   ledgerForm.value.ledger_account_id = ''
@@ -904,7 +908,7 @@ const fetchLedgerAccounts = async () => {
     }
 
     await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data: LedgerAccount[] }>('/api/v1/settings/system/ledgeraccount/list')
+    const response = await $apiFetch<{ data: LedgerAccount[] }>('/api/v1/settings/system/ledgeraccounts/list')
     ledgerAccounts.value = response.data ?? []
   } catch (err) {
     console.error('Failed to fetch ledger accounts:', err)
