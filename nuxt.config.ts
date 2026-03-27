@@ -26,9 +26,9 @@ export default defineNuxtConfig({
   pwa: {
     registerType: 'autoUpdate',
     manifest: {
-      name: 'Farm Management System',
-      short_name: 'FarmManage',
-      description: 'Offline-first farm management application',
+      name: 'Farmconsul — Smart Farm Management',
+      short_name: 'Farmconsul',
+      description: 'Track crops, manage workers, record harvests — all from your phone. Built for African farmers.',
       theme_color: '#10B981',
       background_color: '#ffffff',
       display: 'standalone',
