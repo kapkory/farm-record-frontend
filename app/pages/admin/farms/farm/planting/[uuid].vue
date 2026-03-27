@@ -233,13 +233,7 @@
         </div>
 
         <div v-else-if="activeTab === 'tasks'" class="p-6">
-          <div class="rounded-lg border border-sky-200 bg-sky-50 p-5">
-            <h2 class="text-lg font-semibold text-gray-900">Tasks</h2>
-            <p class="mt-2 text-sm text-gray-700">Track work that needs to be done for this planting, such as weeding, irrigation, scouting, or harvesting preparation.</p>
-            <div class="mt-4 rounded-lg border border-dashed border-sky-300 bg-white p-5 text-sm text-gray-600">
-              No tasks have been added yet. This space can show upcoming work, assigned workers, and completion status.
-            </div>
-          </div>
+          <Task :planting-uuid="planting.uuid" />
         </div>
 
         <div v-else class="p-6">

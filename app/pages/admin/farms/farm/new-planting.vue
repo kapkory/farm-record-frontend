@@ -398,10 +398,15 @@ const handleSubmit = async () => {
     }
 
     if (isOnline.value) {
-      await $apiFetch('/api/v1/farms/farm/plantings', {
+      const response = await $apiFetch<{ data?: { uuid?: string } }>('/api/v1/farms/farm/plantings', {
         method: 'POST',
         body: payload
       })
+      const uuid = response?.data?.uuid
+      if (uuid) {
+        await router.push(`/admin/farms/farm/planting/${uuid}`)
+        return
+      }
     }
 
     successMessage.value = 'Planting saved successfully!'

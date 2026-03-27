@@ -59,6 +59,20 @@ export const useAuth = () => {
     })
   }
 
+  async function resetPassword(payload: Record<string, any>) {
+    await ensureCsrf()
+    const token = getCookie('XSRF-TOKEN') || getCookie('X-CSRF-TOKEN') || ''
+    const headers: Record<string, string> = { Accept: 'application/json' }
+    if (token) {
+      headers['X-XSRF-TOKEN'] = token
+      headers['X-CSRF-TOKEN'] = token
+    }
+    return axios.post(`${base}/reset-password`, payload, {
+      withCredentials: true,
+      headers
+    })
+  }
+
   async function logout() {
     await ensureCsrf()
     const token = getCookie('XSRF-TOKEN') || getCookie('X-CSRF-TOKEN') || ''
@@ -70,5 +84,5 @@ export const useAuth = () => {
     return axios.post(`${base}/logout`, {}, { withCredentials: true, headers })
   }
 
-  return { register, login, forgotPassword, logout }
+  return { register, login, forgotPassword, resetPassword, logout }
 }

@@ -40,7 +40,7 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="planting in plantings" :key="planting.id" class="hover:bg-gray-50">
+            <tr v-for="planting in plantings" :key="planting.id" class="hover:bg-gray-50 cursor-pointer" @click="navigateTo(`/admin/farms/farm/planting/${planting.uuid}`)">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center gap-2">
                   <Sprout class="w-4 h-4 text-green-500" />
@@ -66,10 +66,7 @@
                   {{ planting.status ?? 'active' }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <!-- <button class="text-green-600 hover:text-green-900 mr-3" title="View">
-                  <Eye class="w-4 h-4" />
-                </button> -->
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" @click.stop>
                 <a :href="`/admin/farms/farm/planting/${planting.uuid}`" 
                 class="inline-flex items-center text-green-600 hover:text-green-900 mr-3" title="View">
                   <Eye class="w-4 h-4" />

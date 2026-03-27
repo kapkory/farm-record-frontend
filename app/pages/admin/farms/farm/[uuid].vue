@@ -1,5 +1,18 @@
 <template>
   <div class="space-y-6">
+    <!-- Loading State -->
+    <div v-if="loading" class="flex items-center justify-center py-20">
+      <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-green-500"></div>
+      <span class="ml-3 text-gray-600">Loading farm...</span>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="loadError" class="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">
+      <p class="font-medium">Failed to load farm</p>
+      <p class="mt-1 text-sm">{{ loadError }}</p>
+    </div>
+
+    <template v-else>
     <!-- Farm Header -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -20,10 +33,11 @@
               ]">
                 {{ farm.status }}
               </span>
-              <span class="text-sm text-gray-500">{{ farm.size }}</span>
-              <span class="text-sm text-gray-500">•</span>
-              <span class="text-sm text-gray-500">{{ farm.type }}</span>
+              <span v-if="farm.size" class="text-sm text-gray-500">{{ farm.size }} {{ farm.size_unit }}</span>
+              <span v-if="farm.size && farm.type" class="text-sm text-gray-500">•</span>
+              <span v-if="farm.type" class="text-sm text-gray-500">{{ farm.type }}</span>
             </div>
+            <p v-if="farm.owner" class="mt-1 text-sm text-gray-500">Owner: {{ farm.owner }}</p>
           </div>
         </div>
         <div class="flex gap-2">
@@ -47,7 +61,7 @@
             <Sprout class="w-5 h-5 text-green-600" />
           </div>
           <div>
-            <p class="text-2xl font-bold text-gray-900">{{ stats.totalPlantings }}</p>
+            <p class="text-2xl font-bold text-gray-900">{{ farm.total_plantings ?? '—' }}</p>
             <p class="text-sm text-gray-500">Active Plantings</p>
           </div>
         </div>
@@ -58,7 +72,7 @@
             <Beef class="w-5 h-5 text-amber-600" />
           </div>
           <div>
-            <p class="text-2xl font-bold text-gray-900">{{ stats.totalLivestock }}</p>
+            <p class="text-2xl font-bold text-gray-900">{{ farm.total_livestocks ?? '—' }}</p>
             <p class="text-sm text-gray-500">Livestock</p>
           </div>
         </div>
@@ -69,7 +83,7 @@
             <Ruler class="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <p class="text-2xl font-bold text-gray-900">{{ stats.areaPlanted }}</p>
+            <p class="text-2xl font-bold text-gray-900">{{ farm.total_area_planted ?? '—' }}</p>
             <p class="text-sm text-gray-500">Area Planted</p>
           </div>
         </div>
@@ -80,7 +94,7 @@
             <CalendarDays class="w-5 h-5 text-purple-600" />
           </div>
           <div>
-            <p class="text-2xl font-bold text-gray-900">{{ stats.nextHarvest }}</p>
+            <p class="text-2xl font-bold text-gray-900">{{ farm.next_harvest_date ?? '—' }}</p>
             <p class="text-sm text-gray-500">Next Harvest</p>
           </div>
         </div>
@@ -105,12 +119,6 @@
           >
             <component :is="tab.icon" class="w-4 h-4" />
             {{ tab.label }}
-            <span :class="[
-              'px-2 py-0.5 text-xs rounded-full',
-              activeTab === tab.id ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-            ]">
-              {{ tab.count }}
-            </span>
           </button>
         </nav>
       </div>
@@ -122,13 +130,14 @@
         <Livestock v-if="activeTab === 'livestock'" />
       </div>
     </div>
+    </template>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { 
   Warehouse, MapPin, Pencil, Trash2, Sprout, Beef, 
-  Ruler, CalendarDays, Plus, Eye 
+  Ruler, CalendarDays
 } from 'lucide-vue-next'
 
 import Fields from '~/components/farms/farm/tabs/Fields.vue'
@@ -140,34 +149,51 @@ definePageMeta({
   layout: 'admin'
 })
 
+interface FarmData {
+  uuid?: string
+  name?: string
+  location?: string
+  size?: string | number
+  size_unit?: string
+  type?: string
+  status?: string
+  owner?: string
+  created_at?: string
+  created_at_human?: string
+  total_plantings?: number
+  total_livestocks?: number
+  total_area_planted?: string | number
+  next_harvest_date?: string
+  [key: string]: unknown
+}
+
 const route = useRoute()
+const { $apiFetch } = useNuxtApp()
 const farmId = route.params.uuid
 
-// Dummy farm data
-const farm = ref({
-  id: farmId,
-  name: 'Green Valley Farm',
-  location: 'Kiambu County, Kenya',
-  size: '50 acres',
-  type: 'Mixed Farming',
-  status: 'active',
-  owner: 'John Kamau',
-  createdAt: '2024-03-15'
-})
+const loading = ref(true)
+const loadError = ref<string | null>(null)
+const farm = ref<FarmData>({})
 
-// Stats summary
-const stats = ref({
-  totalPlantings: 8,
-  totalLivestock: 156,
-  areaPlanted: '35 acres',
-  nextHarvest: '15 days'
+onMounted(async () => {
+  try {
+    await $apiFetch('/sanctum/csrf-cookie')
+    const response = await $apiFetch<{ data?: FarmData }>(`/api/v1/farms/farm/${farmId}`)
+    console.log(response)
+    farm.value = response.data ?? (response as unknown as FarmData)
+  } catch (err) {
+    loadError.value = err instanceof Error ? err.message : 'Failed to load farm'
+    console.error('Failed to fetch farm:', err)
+  } finally {
+    loading.value = false
+  }
 })
 
 // Tabs configuration
 const tabs = [
-  { id: 'fields', label: 'Fields', icon: Sprout, count: 0 },
-  { id: 'plantings', label: 'Plantings', icon: Sprout, count: 8 },
-  { id: 'livestock', label: 'Livestock', icon: Beef, count: 5 }
+  { id: 'fields', label: 'Fields', icon: Sprout },
+  { id: 'plantings', label: 'Plantings', icon: Sprout },
+  { id: 'livestock', label: 'Livestock', icon: Beef }
 ]
 
 const activeTab = ref('plantings')

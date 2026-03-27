@@ -169,8 +169,8 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="farm in paginatedFarms" :key="farm.id" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap">
+            <tr v-for="farm in paginatedFarms" :key="farm.id" class="hover:bg-gray-50 cursor-pointer" @click="viewFarm(farm.id)">
+              <td class="px-6 py-4 whitespace-nowrap" @click.stop>
                 <input type="checkbox" class="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500">
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -214,7 +214,7 @@
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
                 <div class="flex items-center justify-end space-x-2">
                   <button 
-                    @click="viewFarm(farm.id)"
+                    @click.stop="viewFarm(farm.id)"
                     class="text-blue-600 hover:text-blue-800"
                     title="View Details"
                   >
@@ -224,7 +224,7 @@
                     </svg>
                   </button>
                   <button 
-                    @click="editFarm(farm.id)"
+                    @click.stop="editFarm(farm.id)"
                     class="text-green-600 hover:text-green-800"
                     title="Edit Farm"
                   >
