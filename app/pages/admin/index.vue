@@ -1,247 +1,262 @@
 <template>
-  <div>
+  <div class="space-y-6">
     <!-- Page Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900">Dashboard Overview</h1>
-      <p class="text-gray-600 mt-2">Welcome back! Here's what's happening with your farms today.</p>
-    </div>
-
-    <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <!-- Total Farms -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-gray-600">Total Farms</p>
-            <h3 class="text-3xl font-bold text-gray-900 mt-2">{{ stats.totalFarms }}</h3>
-            <div class="flex items-center mt-2">
-              <svg class="w-4 h-4 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
-              </svg>
-              <span class="text-sm text-green-600 font-medium">+12%</span>
-              <span class="text-sm text-gray-500 ml-1">vs last month</span>
-            </div>
-          </div>
-          <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
-            <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-            </svg>
-          </div>
-        </div>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">
+          Good {{ greeting }}, {{ authStore.currentFarmer?.name?.split(' ')[0] || 'there' }}
+        </h1>
+        <p class="text-gray-500 mt-1 text-sm">Here's an overview of your farm operations.</p>
       </div>
-
-      <!-- Active Crops -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-gray-600">Active Crops</p>
-            <h3 class="text-3xl font-bold text-gray-900 mt-2">{{ stats.activeCrops }}</h3>
-            <div class="flex items-center mt-2">
-              <svg class="w-4 h-4 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
-              </svg>
-              <span class="text-sm text-green-600 font-medium">+8%</span>
-              <span class="text-sm text-gray-500 ml-1">vs last season</span>
-            </div>
-          </div>
-          <div class="w-14 h-14 bg-yellow-100 rounded-full flex items-center justify-center">
-            <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      <!-- Total Livestock -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-gray-600">Total Livestock</p>
-            <h3 class="text-3xl font-bold text-gray-900 mt-2">{{ stats.totalLivestock }}</h3>
-            <div class="flex items-center mt-2">
-              <svg class="w-4 h-4 text-red-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M12 13a1 1 0 100 2h5a1 1 0 001-1V9a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586 3.707 5.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z" clip-rule="evenodd"/>
-              </svg>
-              <span class="text-sm text-red-600 font-medium">-3%</span>
-              <span class="text-sm text-gray-500 ml-1">vs last month</span>
-            </div>
-          </div>
-          <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
-            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      <!-- Revenue -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-gray-600">Monthly Revenue</p>
-            <h3 class="text-3xl font-bold text-gray-900 mt-2">${{ stats.revenue.toLocaleString() }}</h3>
-            <div class="flex items-center mt-2">
-              <svg class="w-4 h-4 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
-              </svg>
-              <span class="text-sm text-green-600 font-medium">+23%</span>
-              <span class="text-sm text-gray-500 ml-1">vs last month</span>
-            </div>
-          </div>
-          <div class="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center">
-            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-          </div>
-        </div>
+      <div class="mt-3 sm:mt-0 flex items-center gap-2">
+        <NuxtLink
+          to="/admin/farms/add"
+          class="inline-flex items-center gap-1.5 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 transition-colors"
+        >
+          <Plus class="h-4 w-4" />
+          New Farm
+        </NuxtLink>
+        <NuxtLink
+          to="/admin/farms/farm/new-planting"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <Sprout class="h-4 w-4" />
+          New Planting
+        </NuxtLink>
       </div>
     </div>
 
-    <!-- Charts and Recent Activity -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-      <!-- Production Overview Chart -->
-      <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-gray-900">Production Overview</h2>
-          <select class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none">
-            <option>Last 7 days</option>
-            <option>Last 30 days</option>
-            <option>Last 3 months</option>
-            <option>Last year</option>
-          </select>
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        v-for="card in statCards"
+        :key="card.label"
+        class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium text-gray-500">{{ card.label }}</span>
+          <div class="h-9 w-9 rounded-lg flex items-center justify-center" :class="card.iconBg">
+            <component :is="card.icon" class="h-5 w-5" :class="card.iconColor" />
+          </div>
         </div>
-        
-        <!-- Simple Bar Chart Representation -->
-        <div class="space-y-4">
-          <div v-for="(item, index) in productionData" :key="index" class="space-y-2">
-            <div class="flex items-center justify-between text-sm">
-              <span class="font-medium text-gray-700">{{ item.label }}</span>
-              <span class="text-gray-600">{{ item.value }} tons</span>
+        <div class="mt-3">
+          <p v-if="loading" class="h-8 w-16 bg-gray-200 rounded animate-pulse"></p>
+          <p v-else class="text-2xl font-bold text-gray-900">{{ card.value }}</p>
+        </div>
+        <p class="mt-1 text-xs text-gray-400">{{ card.sub }}</p>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Active Plantings -->
+      <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200">
+        <div class="flex items-center justify-between p-5 pb-0">
+          <h2 class="text-base font-semibold text-gray-900">Active Plantings</h2>
+          <NuxtLink to="/admin/plantings" class="text-xs font-medium text-green-600 hover:text-green-700">
+            View all
+          </NuxtLink>
+        </div>
+
+        <div v-if="loading" class="p-5 space-y-3">
+          <div v-for="i in 4" :key="i" class="h-14 bg-gray-100 rounded-lg animate-pulse"></div>
+        </div>
+
+        <div v-else-if="plantings.length === 0" class="p-10 text-center">
+          <Sprout class="h-10 w-10 text-gray-300 mx-auto" />
+          <p class="mt-2 text-sm text-gray-500">No active plantings yet.</p>
+          <NuxtLink
+            to="/admin/farms/farm/new-planting"
+            class="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-green-600 hover:text-green-700"
+          >
+            <Plus class="h-4 w-4" /> Add your first planting
+          </NuxtLink>
+        </div>
+
+        <div v-else class="divide-y divide-gray-100">
+          <NuxtLink
+            v-for="p in plantings.slice(0, 5)"
+            :key="p.uuid"
+            :to="`/admin/farms/farm/planting/${p.uuid}`"
+            class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors"
+          >
+            <div
+              class="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+              :class="statusStyle(p.status).bg"
+            >
+              <component :is="statusStyle(p.status).icon" class="h-4 w-4" :class="statusStyle(p.status).text" />
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-3">
-              <div 
-                class="h-3 rounded-full transition-all duration-500"
-                :class="item.color"
-                :style="{ width: item.percentage + '%' }"
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate">
+                {{ p.crop?.name || 'Unknown Crop' }}
+                <span v-if="p.crop_variety" class="text-gray-400 font-normal">· {{ p.crop_variety.name }}</span>
+              </p>
+              <p class="text-xs text-gray-500 truncate">
+                {{ p.farm?.name || '—' }}
+                <span v-if="p.field">· {{ p.field.name }}</span>
+              </p>
+            </div>
+            <div class="text-right shrink-0">
+              <span
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                :class="statusStyle(p.status).badge"
+              >
+                {{ p.status }}
+              </span>
+              <p v-if="p.expected_harvest_date" class="text-xs text-gray-400 mt-0.5">
+                Harvest {{ formatDate(p.expected_harvest_date) }}
+              </p>
+            </div>
+          </NuxtLink>
+        </div>
+      </div>
+
+      <!-- Tasks -->
+      <div class="bg-white rounded-xl border border-gray-200">
+        <div class="flex items-center justify-between p-5 pb-0">
+          <h2 class="text-base font-semibold text-gray-900">Pending Tasks</h2>
+          <span
+            v-if="!loading && pendingTasks.length > 0"
+            class="text-xs font-medium text-orange-600 bg-orange-50 rounded-full px-2 py-0.5"
+          >
+            {{ pendingTasks.length }}
+          </span>
+        </div>
+
+        <div v-if="loading" class="p-5 space-y-3">
+          <div v-for="i in 4" :key="i" class="h-12 bg-gray-100 rounded-lg animate-pulse"></div>
+        </div>
+
+        <div v-else-if="tasks.length === 0" class="p-10 text-center">
+          <CheckCircle2 class="h-10 w-10 text-gray-300 mx-auto" />
+          <p class="mt-2 text-sm text-gray-500">No tasks yet.</p>
+        </div>
+
+        <div v-else class="divide-y divide-gray-100">
+          <div
+            v-for="t in pendingTasks.slice(0, 6)"
+            :key="t.uuid"
+            class="flex items-start gap-3 px-5 py-3"
+          >
+            <div
+              class="mt-0.5 h-2 w-2 rounded-full shrink-0"
+              :class="priorityColor(t.priority)"
+            ></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-gray-900 truncate">{{ t.title }}</p>
+              <p v-if="t.due_date" class="text-xs text-gray-400">
+                Due {{ formatDate(t.due_date) }}
+              </p>
+            </div>
+            <span
+              class="text-xs font-medium rounded-full px-2 py-0.5 shrink-0"
+              :class="taskStatusBadge(t.task_status)"
+            >
+              {{ taskStatusLabel(t.task_status) }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Farms List -->
+      <div class="bg-white rounded-xl border border-gray-200">
+        <div class="flex items-center justify-between p-5 pb-0">
+          <h2 class="text-base font-semibold text-gray-900">Your Farms</h2>
+          <NuxtLink to="/admin/farms" class="text-xs font-medium text-green-600 hover:text-green-700">
+            Manage
+          </NuxtLink>
+        </div>
+
+        <div v-if="loading" class="p-5 space-y-3">
+          <div v-for="i in 3" :key="i" class="h-16 bg-gray-100 rounded-lg animate-pulse"></div>
+        </div>
+
+        <div v-else-if="farms.length === 0" class="p-10 text-center">
+          <MapPin class="h-10 w-10 text-gray-300 mx-auto" />
+          <p class="mt-2 text-sm text-gray-500">No farms registered yet.</p>
+          <NuxtLink
+            to="/admin/farms/add"
+            class="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-green-600 hover:text-green-700"
+          >
+            <Plus class="h-4 w-4" /> Add a farm
+          </NuxtLink>
+        </div>
+
+        <div v-else class="divide-y divide-gray-100">
+          <NuxtLink
+            v-for="f in farms.slice(0, 5)"
+            :key="f.uuid"
+            :to="`/admin/farms/farm/${f.uuid}`"
+            class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors"
+          >
+            <div class="h-10 w-10 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
+              <Landmark class="h-5 w-5 text-green-600" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate">{{ f.name }}</p>
+              <p class="text-xs text-gray-500">
+                {{ f.location || '—' }} · {{ f.size }} {{ f.size_unit || 'acres' }}
+              </p>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="text-xs text-gray-500">{{ f.total_plantings ?? 0 }} plantings</p>
+              <span
+                class="inline-block mt-0.5 h-1.5 w-1.5 rounded-full"
+                :class="f.status === 'active' ? 'bg-green-400' : 'bg-gray-300'"
+              ></span>
+            </div>
+          </NuxtLink>
+        </div>
+      </div>
+
+      <!-- Planting Status Breakdown -->
+      <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <h2 class="text-base font-semibold text-gray-900 mb-5">Planting Status</h2>
+
+        <div v-if="loading" class="space-y-4">
+          <div v-for="i in 3" :key="i" class="h-8 bg-gray-100 rounded animate-pulse"></div>
+        </div>
+
+        <div v-else-if="plantings.length === 0" class="py-8 text-center">
+          <p class="text-sm text-gray-400">No planting data available.</p>
+        </div>
+
+        <div v-else class="space-y-5">
+          <div v-for="s in plantingBreakdown" :key="s.status">
+            <div class="flex items-center justify-between text-sm mb-1.5">
+              <div class="flex items-center gap-2">
+                <span class="h-2.5 w-2.5 rounded-full" :class="s.dot"></span>
+                <span class="font-medium text-gray-700 capitalize">{{ s.status }}</span>
+              </div>
+              <span class="text-gray-500">{{ s.count }}</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2">
+              <div
+                class="h-2 rounded-full transition-all duration-500"
+                :class="s.bar"
+                :style="{ width: plantings.length ? (s.count / plantings.length * 100) + '%' : '0%' }"
               ></div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Quick Stats -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 class="text-xl font-bold text-gray-900 mb-6">Quick Stats</h2>
-        
-        <div class="space-y-6">
-          <!-- Pending Tasks -->
-          <div class="flex items-start">
-            <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-              </svg>
-            </div>
-            <div class="ml-4">
-              <p class="text-2xl font-bold text-gray-900">{{ quickStats.pendingTasks }}</p>
-              <p class="text-sm text-gray-600">Pending Tasks</p>
-            </div>
-          </div>
-
-          <!-- Upcoming Harvests -->
-          <div class="flex items-start">
-            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-              </svg>
-            </div>
-            <div class="ml-4">
-              <p class="text-2xl font-bold text-gray-900">{{ quickStats.upcomingHarvests }}</p>
-              <p class="text-sm text-gray-600">Upcoming Harvests</p>
-            </div>
-          </div>
-
-          <!-- Health Alerts -->
-          <div class="flex items-start">
-            <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-              </svg>
-            </div>
-            <div class="ml-4">
-              <p class="text-2xl font-bold text-gray-900">{{ quickStats.healthAlerts }}</p>
-              <p class="text-sm text-gray-600">Health Alerts</p>
-            </div>
-          </div>
-
-          <!-- Active Workers -->
-          <div class="flex items-start">
-            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-              </svg>
-            </div>
-            <div class="ml-4">
-              <p class="text-2xl font-bold text-gray-900">{{ quickStats.activeWorkers }}</p>
-              <p class="text-sm text-gray-600">Active Workers</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Recent Activity and Top Farms -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Recent Activity -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-gray-900">Recent Activity</h2>
-          <NuxtLink to="/admin/activity" class="text-sm text-green-500 hover:text-green-600 font-medium">
-            View All
-          </NuxtLink>
-        </div>
-        
-        <div class="space-y-4">
-          <div v-for="(activity, index) in recentActivity" :key="index" class="flex items-start space-x-3 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-            <div 
-              class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-              :class="activity.iconBg"
-            >
-              <svg class="w-5 h-5" :class="activity.iconColor" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="activity.iconPath"/>
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900">{{ activity.title }}</p>
-              <p class="text-sm text-gray-600">{{ activity.description }}</p>
-              <p class="text-xs text-gray-500 mt-1">{{ activity.time }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Top Performing Farms -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-gray-900">Top Performing Farms</h2>
-          <NuxtLink to="/admin/farms" class="text-sm text-green-500 hover:text-green-600 font-medium">
-            View All
-          </NuxtLink>
-        </div>
-        
-        <div class="space-y-4">
-          <div v-for="(farm, index) in topFarms" :key="index" class="flex items-center justify-between pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-            <div class="flex items-center space-x-3">
-              <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <span class="text-green-600 font-bold text-sm">#{{ index + 1 }}</span>
-              </div>
-              <div>
-                <p class="text-sm font-medium text-gray-900">{{ farm.name }}</p>
-                <p class="text-xs text-gray-600">{{ farm.location }}</p>
-              </div>
-            </div>
-            <div class="text-right">
-              <p class="text-sm font-bold text-green-600">${{ farm.revenue.toLocaleString() }}</p>
-              <p class="text-xs text-gray-500">{{ farm.area }} acres</p>
+          <!-- Crop distribution -->
+          <div class="border-t border-gray-100 pt-5 mt-5">
+            <h3 class="text-sm font-medium text-gray-700 mb-3">Top Crops</h3>
+            <div class="flex flex-wrap gap-2">
+              <span
+                v-for="c in topCrops"
+                :key="c.name"
+                class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600"
+              >
+                {{ c.name }}
+                <span class="text-gray-400">{{ c.count }}</span>
+              </span>
+              <span v-if="topCrops.length === 0" class="text-xs text-gray-400">—</span>
             </div>
           </div>
         </div>
@@ -251,89 +266,163 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import {
+  Plus,
+  Sprout,
+  Landmark,
+  MapPin,
+  CheckCircle2,
+  Warehouse,
+  ListTodo,
+  Users,
+  Leaf,
+  Timer,
+  CircleCheck,
+} from 'lucide-vue-next'
 
-// Define layout
 definePageMeta({
   layout: 'admin',
-  middleware: ['auth']
+  middleware: ['auth'],
 })
 
-// Statistics data
-const stats = ref({
-  totalFarms: 127,
-  activeCrops: 45,
-  totalLivestock: 3842,
-  revenue: 254750
+const { $apiFetch } = useNuxtApp()
+const authStore = useAuthStore()
+
+const loading = ref(true)
+const farms = ref([])
+const plantings = ref([])
+const tasks = ref([])
+
+const greeting = computed(() => {
+  const h = new Date().getHours()
+  if (h < 12) return 'morning'
+  if (h < 17) return 'afternoon'
+  return 'evening'
 })
 
-// Production data for chart
-const productionData = ref([
-  { label: 'Wheat', value: 450, percentage: 90, color: 'bg-green-500' },
-  { label: 'Corn', value: 380, percentage: 76, color: 'bg-yellow-500' },
-  { label: 'Soybeans', value: 320, percentage: 64, color: 'bg-blue-500' },
-  { label: 'Rice', value: 280, percentage: 56, color: 'bg-purple-500' },
-  { label: 'Cotton', value: 210, percentage: 42, color: 'bg-pink-500' }
-])
-
-// Quick stats
-const quickStats = ref({
-  pendingTasks: 24,
-  upcomingHarvests: 8,
-  healthAlerts: 3,
-  activeWorkers: 156
-})
-
-// Recent activity
-const recentActivity = ref([
+// --- Stat cards ---
+const statCards = computed(() => [
   {
-    title: 'New farm added',
-    description: 'Green Valley Farm was successfully registered',
-    time: '2 hours ago',
-    iconBg: 'bg-green-100',
+    label: 'Farms',
+    value: farms.value.length,
+    sub: `${farms.value.filter(f => f.status === 'active').length} active`,
+    icon: Warehouse,
+    iconBg: 'bg-green-50',
     iconColor: 'text-green-600',
-    iconPath: 'M12 4v16m8-8H4'
   },
   {
-    title: 'Harvest completed',
-    description: 'Corn harvest at Sunrise Farm completed successfully',
-    time: '5 hours ago',
-    iconBg: 'bg-yellow-100',
-    iconColor: 'text-yellow-600',
-    iconPath: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+    label: 'Active Plantings',
+    value: plantings.value.filter(p => p.status === 'growing').length,
+    sub: `${plantings.value.length} total`,
+    icon: Sprout,
+    iconBg: 'bg-emerald-50',
+    iconColor: 'text-emerald-600',
   },
   {
-    title: 'Health alert',
-    description: 'Livestock health check required at Meadow Farm',
-    time: '8 hours ago',
-    iconBg: 'bg-red-100',
-    iconColor: 'text-red-600',
-    iconPath: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'
+    label: 'Pending Tasks',
+    value: pendingTasks.value.length,
+    sub: `${tasks.value.length} total`,
+    icon: ListTodo,
+    iconBg: 'bg-orange-50',
+    iconColor: 'text-orange-600',
   },
   {
-    title: 'New user registered',
-    description: 'Sarah Johnson joined as Farm Manager',
-    time: '1 day ago',
-    iconBg: 'bg-blue-100',
+    label: 'Team',
+    value: farms.value.reduce((sum, f) => sum + (f.total_personnels ?? 0), 0) || '—',
+    sub: 'across all farms',
+    icon: Users,
+    iconBg: 'bg-blue-50',
     iconColor: 'text-blue-600',
-    iconPath: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
-  }
+  },
 ])
 
-// Top performing farms
-const topFarms = ref([
-  { name: 'Sunrise Valley Farm', location: 'Iowa', revenue: 45600, area: 250 },
-  { name: 'Green Meadows', location: 'Nebraska', revenue: 38900, area: 180 },
-  { name: 'Golden Harvest Co.', location: 'Kansas', revenue: 35200, area: 220 },
-  { name: 'Prairie Heights', location: 'Missouri', revenue: 29800, area: 150 },
-  { name: 'Riverside Acres', location: 'Illinois', revenue: 27500, area: 195 }
-])
+// --- Computed helpers ---
+const pendingTasks = computed(() =>
+  tasks.value.filter(t => t.task_status !== 5) // 5 = completed
+)
 
-// SEO Meta
-useHead({
-  title: 'Dashboard - FarmManage Pro Admin',
-  meta: [
-    { name: 'description', content: 'Admin dashboard for FarmManage Pro farm management system.' }
+const plantingBreakdown = computed(() => {
+  const counts = { growing: 0, harvesting: 0, completed: 0 }
+  plantings.value.forEach(p => {
+    if (counts[p.status] !== undefined) counts[p.status]++
+  })
+  return [
+    { status: 'growing', count: counts.growing, dot: 'bg-green-400', bar: 'bg-green-400' },
+    { status: 'harvesting', count: counts.harvesting, dot: 'bg-yellow-400', bar: 'bg-yellow-400' },
+    { status: 'completed', count: counts.completed, dot: 'bg-gray-400', bar: 'bg-gray-400' },
   ]
+})
+
+const topCrops = computed(() => {
+  const map = {}
+  plantings.value.forEach(p => {
+    const name = p.crop?.name
+    if (name) map[name] = (map[name] || 0) + 1
+  })
+  return Object.entries(map)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([name, count]) => ({ name, count }))
+})
+
+// --- Status styling ---
+function statusStyle(status) {
+  const map = {
+    growing: { bg: 'bg-green-100', text: 'text-green-600', badge: 'bg-green-50 text-green-700', icon: Leaf },
+    harvesting: { bg: 'bg-yellow-100', text: 'text-yellow-600', badge: 'bg-yellow-50 text-yellow-700', icon: Timer },
+    completed: { bg: 'bg-gray-100', text: 'text-gray-500', badge: 'bg-gray-100 text-gray-600', icon: CircleCheck },
+  }
+  return map[status] || map.growing
+}
+
+function priorityColor(priority) {
+  const map = { 1: 'bg-red-500', 2: 'bg-orange-400', 3: 'bg-yellow-400', 4: 'bg-gray-300' }
+  return map[priority] || 'bg-gray-300'
+}
+
+function taskStatusLabel(status) {
+  const map = { 1: 'Open', 2: 'In Progress', 3: 'Review', 4: 'Blocked', 5: 'Done' }
+  return map[status] || 'Open'
+}
+
+function taskStatusBadge(status) {
+  const map = {
+    1: 'bg-blue-50 text-blue-600',
+    2: 'bg-yellow-50 text-yellow-700',
+    3: 'bg-purple-50 text-purple-600',
+    4: 'bg-red-50 text-red-600',
+    5: 'bg-green-50 text-green-600',
+  }
+  return map[status] || 'bg-gray-100 text-gray-600'
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// --- Data fetching ---
+async function fetchDashboardData() {
+  loading.value = true
+  try {
+    const [farmsRes, plantingsRes, tasksRes] = await Promise.all([
+      $apiFetch('/api/v1/farms').catch(() => ({ data: [] })),
+      $apiFetch('/api/v1/farms/farm/plantings/').catch(() => ({ data: [] })),
+      $apiFetch('/api/v1/tasks/list').catch(() => ({ data: [] })),
+    ])
+    farms.value = farmsRes?.data ?? farmsRes ?? []
+    plantings.value = plantingsRes?.data ?? plantingsRes ?? []
+    tasks.value = tasksRes?.data ?? tasksRes ?? []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchDashboardData)
+
+useHead({
+  title: 'Dashboard — Farmconsul',
 })
 </script>
