@@ -10,7 +10,7 @@ RUN npm ci
 # Copy source and build
 COPY . .
 
-ARG NUXT_PUBLIC_API_BASE=https://farmapi.yourdomain.com
+ARG NUXT_PUBLIC_API_BASE=https://api.farmconsul.com
 ENV NUXT_PUBLIC_API_BASE=${NUXT_PUBLIC_API_BASE}
 
 RUN npm run generate
