@@ -203,7 +203,55 @@
             <p v-if="errors.description" class="text-xs text-red-500">{{ errors.description }}</p>
           </div>
         </div>
-       
+
+        <!-- Row 5: Planting Schedule -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-1">
+            <Label for="planting_schedule_uuid" class="block text-sm font-semibold text-gray-700">
+              Planting Schedule
+            </Label>
+            <div v-if="schedulesLoading" class="flex items-center gap-2 py-2 text-sm text-gray-500">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
+              Loading schedules...
+            </div>
+            <select
+              v-else
+              id="planting_schedule_uuid"
+              v-model="form.planting_schedule_uuid"
+              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              <option value="">No schedule (add tasks manually)</option>
+              <option v-for="schedule in filteredSchedules" :key="schedule.uuid" :value="schedule.uuid">
+                {{ schedule.name }}
+                <template v-if="schedule.activities?.length">
+                  ({{ schedule.activities.length }} tasks)
+                </template>
+              </option>
+            </select>
+            <p class="text-xs text-gray-400 mt-1">Select a schedule to auto-generate tasks based on your planting date</p>
+          </div>
+
+          <!-- Schedule Preview -->
+          <div v-if="selectedSchedule" class="space-y-1">
+            <Label class="block text-sm font-semibold text-gray-700">Schedule Preview</Label>
+            <div class="border border-gray-200 rounded-lg p-3 bg-gray-50 max-h-40 overflow-y-auto">
+              <div
+                v-for="(activity, idx) in selectedSchedule.activities"
+                :key="idx"
+                class="flex items-center gap-2 text-xs py-1"
+                :class="{ 'border-t border-gray-200': idx > 0 }"
+              >
+                <span class="w-5 h-5 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold flex-shrink-0">
+                  {{ idx + 1 }}
+                </span>
+                <span class="font-medium text-gray-700">{{ activity.title }}</span>
+                <span class="text-gray-400">—</span>
+                <span class="text-green-600">{{ activity.offset_value }} {{ activity.offset_unit }} after planting</span>
+              </div>
+              <p v-if="!selectedSchedule.activities?.length" class="text-xs text-gray-400 italic">No activities in this schedule</p>
+            </div>
+          </div>
+        </div>
 
         <!-- Actions -->
         <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
@@ -231,7 +279,6 @@
 
 <script lang="ts" setup>
 import { ChevronLeft, Sprout, CheckCircle, AlertCircle } from 'lucide-vue-next'
-import { Text } from 'vue'
 
 definePageMeta({
   middleware: ['auth'],
@@ -262,6 +309,23 @@ interface CropVariety {
   name: string
 }
 
+interface ScheduleActivity {
+  title: string
+  offset_value: number
+  offset_unit: 'days' | 'weeks' | 'months'
+  priority: number
+  description: string
+}
+
+interface PlantingSchedule {
+  id?: number
+  uuid?: string
+  name: string
+  crop_id?: number | string
+  status: string
+  activities: ScheduleActivity[]
+}
+
 const { $apiFetch } = useNuxtApp()
 const { isOnline } = useOffline()
 const router = useRouter()
@@ -271,11 +335,13 @@ const farms = ref<Farm[]>([])
 const fields = ref<Field[]>([])
 const crops = ref<Crop[]>([])
 const varieties = ref<CropVariety[]>([])
+const plantingSchedules = ref<PlantingSchedule[]>([])
 
 // Loading states
 const farmsLoading = ref(true)
 const fieldsLoading = ref(false)
 const cropsLoading = ref(true)
+const schedulesLoading = ref(true)
 const submitting = ref(false)
 
 // Messages
@@ -291,7 +357,8 @@ const form = ref({
   date_planted: new Date().toISOString().split('T')[0],
   quantity_planted: '',
   purpose: 'commercial',
-  description: ''
+  description: '',
+  planting_schedule_uuid: ''
 })
 
 const errors = ref<Record<string, string>>({})
@@ -301,6 +368,20 @@ const filteredVarieties = computed(() =>
   form.value.crop_id
     ? varieties.value.filter(v => v.crop_id === Number(form.value.crop_id))
     : []
+)
+
+// Schedules filtered by selected crop (show generic + crop-specific)
+const filteredSchedules = computed(() =>
+  plantingSchedules.value.filter(s =>
+    s.status === 'active' && (!s.crop_id || s.crop_id === Number(form.value.crop_id))
+  )
+)
+
+// Currently selected schedule for preview
+const selectedSchedule = computed(() =>
+  form.value.planting_schedule_uuid
+    ? plantingSchedules.value.find(s => s.uuid === form.value.planting_schedule_uuid) ?? null
+    : null
 )
 
 // When farm changes, reset field and fetch fields for selected farm
@@ -324,9 +405,10 @@ const onFarmChange = async () => {
   }
 }
 
-// When crop changes, reset variety
+// When crop changes, reset variety and schedule
 const onCropChange = () => {
   form.value.variety_id = ''
+  form.value.planting_schedule_uuid = ''
 }
 
 // Fetch farms list
@@ -394,7 +476,8 @@ const handleSubmit = async () => {
       date_planted: form.value.date_planted,
       quantity_planted: Number(form.value.quantity_planted),
       purpose: form.value.purpose,
-      description: form.value.description
+      description: form.value.description,
+      planting_schedule_uuid: form.value.planting_schedule_uuid || null
     }
 
     if (isOnline.value) {
@@ -420,8 +503,23 @@ const handleSubmit = async () => {
   }
 }
 
+const fetchSchedules = async () => {
+  schedulesLoading.value = true
+  try {
+    if (isOnline.value) {
+      const response = await $apiFetch<{ data: PlantingSchedule[] }>('/api/v1/settings/crops/planting-schedules/list')
+      plantingSchedules.value = response.data ?? (response as unknown as PlantingSchedule[])
+    }
+  } catch (err) {
+    console.error('Failed to fetch planting schedules:', err)
+  } finally {
+    schedulesLoading.value = false
+  }
+}
+
 onMounted(() => {
   fetchFarms()
   fetchCropsAndVarieties()
+  fetchSchedules()
 })
 </script>

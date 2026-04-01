@@ -256,7 +256,15 @@
               Crops
             </NuxtLink>
             <NuxtLink 
-              to="/admin/livestock/health"
+              to="/admin/settings/crops/planting-schedules"
+              :class="{'bg-green-50 text-green-600': $route.path === '/admin/settings/crops/planting-schedules'}"
+              class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
+            >
+              Planting Schedules
+            </NuxtLink>
+            <NuxtLink 
+              to="/admin/settings/livestock"
+              :class="{'bg-green-50 text-green-600': $route.path === '/admin/settings/livestock'}"
               class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
             >
               Livestock
@@ -448,7 +456,9 @@ const openDropdowns = ref({
   farms: false,
   crops: false,
   livestock: false,
-  reports: false
+  reports: false,
+  settings: false,
+  plantings: false
 })
 
 const toggleDropdown = (menu) => {

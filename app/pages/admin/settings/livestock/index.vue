@@ -1,6 +1,6 @@
 <template>
   <div class="p-6">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Crop Settings</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Livestock Settings</h1>
 
     <!-- Tabs Navigation -->
     <div class="border-b border-gray-200 mb-6">
@@ -23,10 +23,9 @@
 
     <!-- Tab Content -->
     <div class="mt-4">
-      <CropsTab v-if="activeTab === 'crops'" />
-      <CropVarietyTab v-if="activeTab === 'variety'" />
-      <TreatmentType v-if="activeTab === 'treatments'" />
-      <PlantingScheduleTab v-if="activeTab === 'schedules'" />
+      <AnimalTypesTab v-if="activeTab === 'types'" />
+      <AnimalBreedsTab v-if="activeTab === 'breeds'" />
+      <AnimalTreatmentType v-if="activeTab === 'treatments'" />
     </div>
   </div>
 </template>
@@ -38,11 +37,10 @@ definePageMeta({
 })
 
 const tabs = [
-  { id: 'crops', label: 'Crops' },
-  { id: 'variety', label: 'Crop Varieties' },
-  { id: 'treatments', label: 'Treatment Types' },
-  { id: 'schedules', label: 'Planting Schedules' }
+  { id: 'types', label: 'Animal Types' },
+  { id: 'breeds', label: 'Breeds' },
+  { id: 'treatments', label: 'Treatment Types' }
 ]
 
-const activeTab = ref('crops')
+const activeTab = ref('types')
 </script>

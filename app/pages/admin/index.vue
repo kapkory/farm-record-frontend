@@ -82,27 +82,27 @@
             class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors"
           >
             <div
-              class="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-              :class="statusStyle(p.status).bg"
+              class="h-9 w-9 rounded-full flex items-center justify-center shrink-0"
+              :class="statusStyle(plantingStatus(p)).bg"
             >
-              <component :is="statusStyle(p.status).icon" class="h-4 w-4" :class="statusStyle(p.status).text" />
+              <component :is="statusStyle(plantingStatus(p)).icon" class="h-4 w-4" :class="statusStyle(plantingStatus(p)).text" />
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-gray-900 truncate">
-                {{ p.crop?.name || 'Unknown Crop' }}
-                <span v-if="p.crop_variety" class="text-gray-400 font-normal">· {{ p.crop_variety.name }}</span>
+                {{ p.crop }}
+                <span v-if="p.variety" class="text-gray-400 font-normal">· {{ p.variety }}</span>
               </p>
               <p class="text-xs text-gray-500 truncate">
-                {{ p.farm?.name || '—' }}
-                <span v-if="p.field">· {{ p.field.name }}</span>
+                {{ p.field || '—' }}
+                <span class="capitalize"> · {{ p.purpose }}</span>
               </p>
             </div>
             <div class="text-right shrink-0">
               <span
-                class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                :class="statusStyle(p.status).badge"
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize"
+                :class="statusStyle(plantingStatus(p)).badge"
               >
-                {{ p.status }}
+                {{ plantingStatus(p) }}
               </span>
               <p v-if="p.expected_harvest_date" class="text-xs text-gray-400 mt-0.5">
                 Harvest {{ formatDate(p.expected_harvest_date) }}
@@ -313,7 +313,7 @@ const statCards = computed(() => [
   },
   {
     label: 'Active Plantings',
-    value: plantings.value.filter(p => p.status === 'growing').length,
+    value: plantings.value.filter(p => plantingStatus(p) === 'growing').length,
     sub: `${plantings.value.length} total`,
     icon: Sprout,
     iconBg: 'bg-emerald-50',
@@ -345,7 +345,8 @@ const pendingTasks = computed(() =>
 const plantingBreakdown = computed(() => {
   const counts = { growing: 0, harvesting: 0, completed: 0 }
   plantings.value.forEach(p => {
-    if (counts[p.status] !== undefined) counts[p.status]++
+    const s = plantingStatus(p)
+    if (s in counts) counts[s]++
   })
   return [
     { status: 'growing', count: counts.growing, dot: 'bg-green-400', bar: 'bg-green-400' },
@@ -357,14 +358,20 @@ const plantingBreakdown = computed(() => {
 const topCrops = computed(() => {
   const map = {}
   plantings.value.forEach(p => {
-    const name = p.crop?.name
-    if (name) map[name] = (map[name] || 0) + 1
+    if (p.crop) map[p.crop] = (map[p.crop] || 0) + 1
   })
   return Object.entries(map)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
     .map(([name, count]) => ({ name, count }))
 })
+
+// Derive planting status from dates since the API has no status field
+function plantingStatus(p) {
+  if (p.actual_harvest_date) return 'completed'
+  if (p.expected_harvest_date && new Date(p.expected_harvest_date) < new Date()) return 'harvesting'
+  return 'growing'
+}
 
 // --- Status styling ---
 function statusStyle(status) {
@@ -409,7 +416,7 @@ async function fetchDashboardData() {
   try {
     const [farmsRes, plantingsRes, tasksRes] = await Promise.all([
       $apiFetch('/api/v1/farms').catch(() => ({ data: [] })),
-      $apiFetch('/api/v1/farms/farm/plantings/').catch(() => ({ data: [] })),
+      $apiFetch('/api/v1/farms/farm/plantings/list').catch(() => ({ data: [] })),
       $apiFetch('/api/v1/tasks/list').catch(() => ({ data: [] })),
     ])
     farms.value = farmsRes?.data ?? farmsRes ?? []
