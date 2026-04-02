@@ -241,7 +241,7 @@ const fetchSchedules = async () => {
   try {
     if (isOnline.value) {
       await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: Schedule[] }>('/api/v1/settings/crops/planting-schedules/list')
+      const response = await $apiFetch<{ data: Schedule[] }>('/api/v1/settings/crops/schedules/list')
       schedules.value = response.data ?? (response as unknown as Schedule[])
     } else {
       schedules.value = []
@@ -262,7 +262,7 @@ const deleteSchedule = async (uuid?: string) => {
   try {
     if (isOnline.value) {
       await $apiFetch('/sanctum/csrf-cookie')
-      await $apiFetch(`/api/v1/settings/crops/planting-schedules/${uuid}`, { method: 'DELETE' })
+      await $apiFetch(`/api/v1/settings/crops/schedules/${uuid}`, { method: 'DELETE' })
     }
     schedules.value = schedules.value.filter(s => s.uuid !== uuid)
   } catch (err: any) {

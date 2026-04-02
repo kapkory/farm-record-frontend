@@ -80,35 +80,7 @@
               </select>
               <p class="text-xs text-gray-400">Optionally link this schedule to a specific crop</p>
             </div>
-
-            <!-- Description -->
-            <div class="space-y-1 md:col-span-2">
-              <Label for="description" class="block text-sm font-semibold text-gray-700">
-                Description
-              </Label>
-              <textarea
-                id="description"
-                v-model="form.description"
-                rows="2"
-                placeholder="Brief description of this schedule"
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              ></textarea>
-            </div>
-
-            <!-- Status -->
-            <div class="space-y-1">
-              <Label for="status" class="block text-sm font-semibold text-gray-700">
-                Status
-              </Label>
-              <select
-                id="status"
-                v-model="form.status"
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+            
           </div>
         </div>
 
@@ -213,6 +185,7 @@
 
                   <!-- Description -->
                   <td class="px-4 py-3 align-top">
+                    <input type="hidden"  v-model="activity.id" />
                     <input
                       v-model="activity.description"
                       type="text"
@@ -341,6 +314,7 @@ definePageMeta({
 })
 
 interface Activity {
+  id?: number
   title: string
   offset_value: number
   offset_unit: 'days' | 'weeks' | 'months'
@@ -465,7 +439,7 @@ const fetchSchedule = async () => {
     if (isOnline.value) {
       await $apiFetch('/sanctum/csrf-cookie')
       const response = await $apiFetch<{ data: Schedule }>(
-        `/api/v1/settings/crops/planting-schedules/${uuid.value}`
+        `/api/v1/settings/crops/schedules/${uuid.value}`
       )
       const schedule = response.data ?? (response as unknown as Schedule)
       form.value = {
@@ -474,6 +448,7 @@ const fetchSchedule = async () => {
         description: schedule.description || '',
         status: schedule.status,
         activities: (schedule.activities || []).map(a => ({
+          id: a.id,
           title: a.title,
           offset_value: a.offset_value,
           offset_unit: a.offset_unit,
@@ -506,6 +481,7 @@ const handleSubmit = async () => {
       description: form.value.description,
       status: form.value.status,
       activities: form.value.activities.map((a, idx) => ({
+        id: a.id,
         title: a.title,
         offset_value: a.offset_value,
         offset_unit: a.offset_unit,
@@ -517,7 +493,7 @@ const handleSubmit = async () => {
 
     if (isEditing.value) {
       if (isOnline.value) {
-        await $apiFetch(`/api/v1/settings/crops/planting-schedules/${uuid.value}`, {
+        await $apiFetch(`/api/v1/settings/crops/schedules/${uuid.value}`, {
           method: 'PUT',
           body: payload
         })
@@ -526,7 +502,7 @@ const handleSubmit = async () => {
     } else {
       if (isOnline.value) {
         const response = await $apiFetch<{ data?: { uuid?: string } }>(
-          '/api/v1/settings/crops/planting-schedules',
+          '/api/v1/settings/crops/schedules',
           { method: 'POST', body: payload }
         )
         const newUuid = response?.data?.uuid

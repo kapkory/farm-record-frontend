@@ -507,7 +507,8 @@ const fetchSchedules = async () => {
   schedulesLoading.value = true
   try {
     if (isOnline.value) {
-      const response = await $apiFetch<{ data: PlantingSchedule[] }>('/api/v1/settings/crops/planting-schedules/list')
+      const response = await $apiFetch<{ data: PlantingSchedule[] }>('/api/v1/settings/crops/schedules/list')
+      console.log('Fetched planting schedules:', response.data)
       plantingSchedules.value = response.data ?? (response as unknown as PlantingSchedule[])
     }
   } catch (err) {
