@@ -295,7 +295,7 @@ const editItem = (item: Treatment) => {
   editingUuid.value = item.uuid ?? null
   form.value = {
     name: item.name,
-    type: 'crop',
+    type: 'livestock' as 'livestock',
     description: item.description,
     status: normalizeStatus(item.status)
   }
