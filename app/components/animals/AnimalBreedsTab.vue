@@ -31,7 +31,7 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Animal Type</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg. Lifespan</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg. Weight</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gestation Period</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
               <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -41,8 +41,8 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.id }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ item.name }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.animal_type?.name || '-' }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.average_lifespan_years }} years</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.average_weight_kg }} kg</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.average_lifespan_months }} months</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.gestation_days }} days</td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
                   {{ item.purpose }}
@@ -110,25 +110,25 @@
               </div>
 
               <div>
-                <Label for="average_lifespan_years" class="block text-sm font-medium text-gray-700 mb-1">Average Lifespan (years)</Label>
+                <Label for="average_lifespan_months" class="block text-sm font-medium text-gray-700 mb-1">Average Lifespan (months)</Label>
                 <Input
-                  id="average_lifespan_years"
-                  v-model.number="form.average_lifespan_years"
+                  id="average_lifespan_months"
+                  v-model="form.average_lifespan_months"
                   type="number"
                   placeholder="Enter average lifespan"
                   min="1"
-                  max="50"
+                  max="600"
                   class="w-full"
                 />
               </div>
 
               <div>
-                <Label for="average_weight_kg" class="block text-sm font-medium text-gray-700 mb-1">Average Weight (kg)</Label>
+                <Label for="gestation_days" class="block text-sm font-medium text-gray-700 mb-1">Gestation Period (days)</Label>
                 <Input
-                  id="average_weight_kg"
-                  v-model.number="form.average_weight_kg"
+                  id="gestation_days"
+                  v-model="form.gestation_days"
                   type="number"
-                  placeholder="Enter average weight"
+                  placeholder="Enter gestation period in days"
                   min="0"
                   class="w-full"
                 />
@@ -143,14 +143,7 @@
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
                   <option value="">Select purpose</option>
-                  <option value="meat">Meat</option>
-                  <option value="dairy">Dairy</option>
-                  <option value="wool">Wool</option>
-                  <option value="eggs">Eggs</option>
-                  <option value="dual">Dual Purpose</option>
-                  <option value="breeding">Breeding</option>
-                  <option value="draft">Draft/Work</option>
-                  <option value="other">Other</option>
+                  <option v-for="purpose in animalPurposes" :key="purpose" :value="purpose">{{ purpose }}</option>
                 </select>
               </div>
 
@@ -191,7 +184,7 @@
 
 <script lang="ts" setup>
 import { Plus, Pencil, Trash2, X } from 'lucide-vue-next'
-import mockData from '~/data/animals.json'
+// import mockData from '~/data/animals.json'
 
 interface AnimalTypeRef {
   id: number
@@ -205,14 +198,15 @@ interface AnimalBreed {
   animal_type?: AnimalTypeRef
   name: string
   description: string | null
-  average_lifespan_years: number | null
-  average_weight_kg: number | null
+  average_lifespan_months: number | null
+  gestation_days: number | null
   purpose: string
 }
 
 const { $apiFetch } = useNuxtApp()
 const { isOnline } = useOffline()
 
+const animalPurposes = ['meat', 'dairy', 'eggs', 'honey', 'wool', 'breeding', 'dual', 'other'];
 const breeds = ref<AnimalBreed[]>([])
 const animalTypes = ref<AnimalTypeRef[]>([])
 const loading = ref(true)
@@ -225,8 +219,8 @@ const editingUuid = ref<string | null>(null)
 const form = ref({
   animal_type_id: '' as number | '',
   name: '',
-  average_lifespan_years: '' as number | '',
-  average_weight_kg: '' as number | '',
+  average_lifespan_months: '',
+  gestation_days: '',
   purpose: '',
   description: ''
 })
@@ -235,8 +229,8 @@ const resetForm = () => {
   form.value = {
     animal_type_id: '',
     name: '',
-    average_lifespan_years: '',
-    average_weight_kg: '',
+    average_lifespan_months: '',
+    gestation_days: '',
     purpose: '',
     description: ''
   }
@@ -265,15 +259,15 @@ const submitForm = async () => {
     const payload = {
       animal_type_id: form.value.animal_type_id,
       name: form.value.name,
-      average_lifespan_years: form.value.average_lifespan_years || null,
-      average_weight_kg: form.value.average_weight_kg || null,
+      average_lifespan_months: form.value.average_lifespan_months ? Number(form.value.average_lifespan_months) : null,
+      gestation_days: form.value.gestation_days ? Number(form.value.gestation_days) : null,
       purpose: form.value.purpose,
       description: form.value.description || null
     }
 
     if (isEditing.value && editingUuid.value) {
       if (isOnline.value) {
-        const response = await $apiFetch<{ status: string; message: string; data: AnimalBreed }>(`/api/v1/settings/livestock/breeds/${editingUuid.value}`, {
+        const response = await $apiFetch<{ status: string; message: string; data: AnimalBreed }>(`/api/v1/settings/animals/animal-breeds/${editingUuid.value}`, {
           method: 'PUT',
           body: payload
         })
@@ -290,7 +284,7 @@ const submitForm = async () => {
     } else {
       let newItem: AnimalBreed
       if (isOnline.value) {
-        const response = await $apiFetch<{ status: string; message: string; data: AnimalBreed }>('/api/v1/settings/livestock/breeds', {
+        const response = await $apiFetch<{ status: string; message: string; data: AnimalBreed }>('/api/v1/settings/animals/animal-breeds', {
           method: 'POST',
           body: payload
         })
@@ -314,14 +308,14 @@ const fetchAnimalTypes = async () => {
   try {
     if (isOnline.value) {
       await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: AnimalTypeRef[] }>('/api/v1/settings/livestock/animal-types/list')
+      const response = await $apiFetch<{ data: AnimalTypeRef[] }>('/api/v1/settings/animals/animal-types/list')
       animalTypes.value = response.data || response as unknown as AnimalTypeRef[]
     } else {
-      animalTypes.value = mockData.animalTypes.map(t => ({ id: t.id, name: t.name }))
+      // animalTypes.value = mockData.animalTypes.map(t => ({ id: t.id, name: t.name }))
     }
   } catch (err: any) {
     console.error('Failed to fetch animal types:', err)
-    animalTypes.value = mockData.animalTypes.map(t => ({ id: t.id, name: t.name }))
+    // animalTypes.value = mockData.animalTypes.map(t => ({ id: t.id, name: t.name }))
   }
 }
 
@@ -332,14 +326,14 @@ const fetchData = async () => {
   try {
     if (isOnline.value) {
       await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: AnimalBreed[] }>('/api/v1/settings/livestock/breeds/list')
+      const response = await $apiFetch<{ data: AnimalBreed[] }>('/api/v1/settings/animals/animal-breeds/list')
       breeds.value = response.data || response as unknown as AnimalBreed[]
     } else {
-      breeds.value = mockData.animalBreeds as AnimalBreed[]
+      // breeds.value = mockData.animalBreeds as AnimalBreed[]
     }
   } catch (err: any) {
     console.error('Failed to fetch breeds:', err)
-    breeds.value = mockData.animalBreeds as AnimalBreed[]
+    // breeds.value = mockData.animalBreeds as AnimalBreed[]
   } finally {
     loading.value = false
   }
@@ -351,8 +345,8 @@ const editItem = (item: AnimalBreed) => {
   form.value = {
     animal_type_id: item.animal_type_id,
     name: item.name,
-    average_lifespan_years: item.average_lifespan_years || '',
-    average_weight_kg: item.average_weight_kg || '',
+    average_lifespan_months: item.average_lifespan_months?.toString() ?? '',
+    gestation_days: item.gestation_days?.toString() ?? '',
     purpose: item.purpose,
     description: item.description || ''
   }
@@ -365,7 +359,7 @@ const deleteItem = async (uuid?: string) => {
   try {
     if (isOnline.value) {
       await $apiFetch('/sanctum/csrf-cookie')
-      await $apiFetch(`/api/v1/settings/livestock/breeds/${uuid}`, { method: 'DELETE' })
+      await $apiFetch(`/api/v1/settings/animals/animal-breeds/${uuid}`, { method: 'DELETE' })
     }
     breeds.value = breeds.value.filter(item => item.uuid !== uuid)
   } catch (err: any) {

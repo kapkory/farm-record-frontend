@@ -8,7 +8,7 @@
 
     <!-- Error State -->
     <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-      <p class="font-medium">Failed to load treatment types</p>
+      <p class="font-medium">Failed to load Treatment types</p>
       <p class="text-sm mt-1">{{ error }}</p>
       <button @click="fetchData" class="mt-2 text-sm underline hover:no-underline">Try again</button>
     </div>
@@ -16,10 +16,10 @@
     <!-- Data Table -->
     <div v-else class="bg-white shadow rounded-lg overflow-hidden">
       <div class="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-        <h3 class="text-lg font-medium text-gray-900">Animal Treatment Types</h3>
+        <h3 class="text-lg font-medium text-gray-900">treatments</h3>
         <Button @click="openAddModal">
           <Plus class="w-4 h-4 mr-2" />
-          Add Treatment Type
+          Add treatment
         </Button>
       </div>
 
@@ -58,7 +58,7 @@
             </tr>
             <tr v-if="treatments.length === 0">
               <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                No treatment types found. Add your first treatment type to get started.
+                No treatments found. Add your first treatment to get started.
               </td>
             </tr>
           </tbody>
@@ -69,22 +69,27 @@
     <!-- Add/Edit Modal -->
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 z-50 overflow-y-auto">
+        <!-- Backdrop -->
         <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" @click="closeModal"></div>
         
+        <!-- Modal -->
         <div class="flex min-h-full items-center justify-center p-4">
           <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md transform transition-all">
+            <!-- Header -->
             <div class="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 class="text-lg font-semibold text-gray-900">
-                {{ isEditing ? 'Edit Treatment Type' : 'Add Treatment Type' }}
+                {{ isEditing ? 'Edit treatment' : 'Add treatment' }}
               </h3>
               <button @click="closeModal" class="text-gray-400 hover:text-gray-500">
                 <X class="w-5 h-5" />
               </button>
             </div>
 
+            <!-- Form -->
             <form @submit.prevent="submitForm" class="p-4 space-y-4">
+              <!-- Name -->
               <div>
-                <Label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name *</Label>
+                <Label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name</Label>
                 <Input
                   id="name"
                   v-model="form.name"
@@ -95,6 +100,7 @@
                 />
               </div>
 
+              <!-- Description -->
               <div>
                 <Label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</Label>
                 <textarea
@@ -105,8 +111,9 @@
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 ></textarea>
               </div>
-              <input type="hidden" name="type" value="animal" />
+              <input type="hidden" name="type" value="crop" />
 
+              <!-- Status -->
               <div>
                 <Label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</Label>
                 <select
@@ -119,6 +126,7 @@
                 </select>
               </div>
 
+              <!-- Actions -->
               <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="button"
@@ -145,13 +153,12 @@
 
 <script lang="ts" setup>
 import { Plus, Pencil, Trash2, X } from 'lucide-vue-next'
-import mockData from '~/data/animals.json'
 
 interface Treatment {
   id: number
   uuid?: string
   name: string
-  type: 'animal'
+  type: 'livestock'
   description: string
   status: 'active' | 'inactive' | 1 | 0 | '1' | '0'
 }
@@ -169,7 +176,7 @@ const editingUuid = ref<string | null>(null)
 
 const form = ref({
   name: '',
-  type: 'animal' as 'animal',
+  type: 'livestock' as 'livestock',
   description: '',
   status: 'active' as 'active' | 'inactive'
 })
@@ -178,7 +185,12 @@ const normalizeStatus = (status: Treatment['status']) =>
   status === 1 || status === '1' || status === 'active' ? 'active' : 'inactive'
 
 const resetForm = () => {
-  form.value = { name: '', type: 'animal', description: '', status: 'active' }
+  form.value = {
+    name: '',
+    type: 'livestock' as 'livestock',
+    description: '',
+    status: 'active' as 'active' | 'inactive'
+  }
   isEditing.value = false
   editingUuid.value = null
 }
@@ -195,46 +207,55 @@ const closeModal = () => {
 
 const submitForm = async () => {
   submitting.value = true
-
+  
   try {
+    // Fetch CSRF cookie first
     if (isOnline.value) {
       await $apiFetch('/sanctum/csrf-cookie')
     }
 
     if (isEditing.value && editingUuid.value) {
+      // Update existing
       if (isOnline.value) {
-        const response = await $apiFetch<{ status: string; message: string; data: Treatment }>(`/api/v1/settings/livestock/treatment-types/${editingUuid.value}`, {
+        const response = await $apiFetch<{ status: string; message: string; data: Treatment }>(`/api/v1/settings/crops/treatment-types/${editingUuid.value}`, {
           method: 'PUT',
           body: form.value
         })
-        const index = treatments.value.findIndex(t => t.uuid === editingUuid.value)
+        // Update local list with server response
+        const index = treatments.value.findIndex(c => c.uuid === editingUuid.value)
         if (index !== -1) {
           treatments.value[index] = response.data
         }
       } else {
-        const index = treatments.value.findIndex(t => t.uuid === editingUuid.value)
+        // Update local list when offline
+        const index = treatments.value.findIndex(c => c.uuid === editingUuid.value)
         if (index !== -1) {
           treatments.value[index] = { ...treatments.value[index], ...form.value } as Treatment
         }
       }
     } else {
+      // Create new
       let newItem: Treatment
       if (isOnline.value) {
-        const response = await $apiFetch<{ status: string; message: string; data: Treatment }>('/api/v1/settings/livestock/treatment-types', {
+        const response = await $apiFetch<{ status: string; message: string; data: Treatment }>('/api/v1/settings/crops/treatment-types', {
           method: 'POST',
           body: form.value
         })
         newItem = response.data
       } else {
-        newItem = { id: Date.now(), ...form.value } as Treatment
+        // Offline: generate temporary ID (UUID will be assigned by server when synced)
+        newItem = {
+          id: Date.now(),
+          ...form.value
+        } as Treatment
       }
       treatments.value.push(newItem)
     }
-
+    
     closeModal()
   } catch (err: any) {
-    console.error('Failed to save treatment type:', err)
-    alert('Failed to save treatment type: ' + (err.message || 'Unknown error'))
+    console.error('Failed to save treatment:', err)
+    alert('Failed to save treatment: ' + (err.message || 'Unknown error'))
   } finally {
     submitting.value = false
   }
@@ -243,21 +264,27 @@ const submitForm = async () => {
 const fetchData = async () => {
   loading.value = true
   error.value = null
-
+  
   try {
     if (isOnline.value) {
+      // Fetch CSRF cookie first
       await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: Treatment[] }>('/api/v1/settings/livestock/treatment-types/list')
+      // Fetch from backend API
+      const response = await $apiFetch<{ data: Treatment[] }>('/api/v1/settings/crops/treatment-types/list/livestock')
       treatments.value = (response.data || response as unknown as Treatment[]).map(item => ({
         ...item,
         status: normalizeStatus(item.status)
       }))
     } else {
-      treatments.value = mockData.treatmentTypes as Treatment[]
+      // Load from local JSON when offline (fallback)
+      treatments.value = []
     }
   } catch (err: any) {
-    console.error('Failed to fetch treatment types:', err)
-    treatments.value = mockData.treatmentTypes as Treatment[]
+    console.error('Failed to fetch treatments:', err)
+    error.value = err.message || 'An error occurred while loading data'
+    // Fallback to sample data on error
+    treatments.value = []
+    error.value = null // Clear error since we have fallback data
   } finally {
     loading.value = false
   }
@@ -268,7 +295,7 @@ const editItem = (item: Treatment) => {
   editingUuid.value = item.uuid ?? null
   form.value = {
     name: item.name,
-    type: 'animal',
+    type: 'crop',
     description: item.description,
     status: normalizeStatus(item.status)
   }
@@ -276,17 +303,17 @@ const editItem = (item: Treatment) => {
 }
 
 const deleteItem = async (uuid: string) => {
-  if (!confirm('Are you sure you want to delete this treatment type?')) return
-
+  if (!confirm('Are you sure you want to delete this treatment?')) return
+  
   try {
     if (isOnline.value) {
       await $apiFetch('/sanctum/csrf-cookie')
-      await $apiFetch(`/api/v1/settings/livestock/treatment-types/${uuid}`, { method: 'DELETE' })
+      await $apiFetch(`/api/v1/settings/crops/treatment-types/${uuid}`, { method: 'DELETE' })
     }
     treatments.value = treatments.value.filter(item => item.uuid !== uuid)
   } catch (err: any) {
     console.error('Failed to delete:', err)
-    alert('Failed to delete treatment type')
+    alert('Failed to delete treatment')
   }
 }
 

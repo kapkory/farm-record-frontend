@@ -270,7 +270,7 @@ const fetchData = async () => {
       // Fetch CSRF cookie first
       await $apiFetch('/sanctum/csrf-cookie')
       // Fetch from backend API
-      const response = await $apiFetch<{ data: Treatment[] }>('/api/v1/settings/crops/treatment-types/list')
+      const response = await $apiFetch<{ data: Treatment[] }>('/api/v1/settings/crops/treatment-types/list/crop')
       treatments.value = (response.data || response as unknown as Treatment[]).map(item => ({
         ...item,
         status: normalizeStatus(item.status)

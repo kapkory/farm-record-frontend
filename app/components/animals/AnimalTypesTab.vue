@@ -106,14 +106,7 @@
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
                   <option value="">Select category</option>
-                  <option value="bovine">Bovine</option>
-                  <option value="ovine">Ovine</option>
-                  <option value="caprine">Caprine</option>
-                  <option value="avian">Avian</option>
-                  <option value="porcine">Porcine</option>
-                  <option value="equine">Equine</option>
-                  <option value="lagomorph">Lagomorph</option>
-                  <option value="other">Other</option>
+                  <option v-for="category in animalCategories" :key="category" :value="category">{{ category }}</option>
                 </select>
               </div>
 
@@ -128,6 +121,39 @@
                 ></textarea>
               </div>
 
+              <!-- Tracking Mode -->
+              <div>
+                <Label for="tracking_mode" class="block text-sm font-medium text-gray-700 mb-1">How do you track these animals?</Label>
+                <select
+                  id="tracking_mode"
+                  v-model="form.tracking_mode"
+                  class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                  <option value="both">Both — group count &amp; individual records</option>
+                  <option value="group_only">Group count only (e.g. flocks, hives, fish)</option>
+                  <option value="individual_only">Individual records only (e.g. tagged cows, horses)</option>
+                </select>
+                <p class="text-xs text-gray-400 mt-1">
+                  <span v-if="form.tracking_mode === 'group_only'">You will record the total number in the group, but not individual animals.</span>
+                  <span v-else-if="form.tracking_mode === 'individual_only'">Each animal gets its own record (name, tag, health history, etc.).</span>
+                  <span v-else>You can track the full group count and also keep individual records.</span>
+                </p>
+              </div>
+
+              <!-- Count Label -->
+              <div>
+                <Label for="count_label" class="block text-sm font-medium text-gray-700 mb-1">What do you call them?</Label>
+                <Input
+                  id="count_label"
+                  v-model="form.count_label"
+                  type="text"
+                  placeholder="e.g. cows, birds, hives, fish"
+                  maxlength="50"
+                  class="w-full"
+                />
+                <p class="text-xs text-gray-400 mt-1">Used in reports — e.g. "12 <em>{{ form.count_label || 'animals' }}</em>"</p>
+              </div>
+
               <div>
                 <Label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</Label>
                 <select
@@ -135,8 +161,8 @@
                   v-model="form.status"
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="1">Active</option>
+                  <option value="0">Inactive</option>
                 </select>
               </div>
 
@@ -166,7 +192,7 @@
 
 <script lang="ts" setup>
 import { Plus, Pencil, Trash2, X } from 'lucide-vue-next'
-import mockData from '~/data/animals.json'
+// import mockData from '~/data/animals.json'
 
 interface AnimalType {
   id: number
@@ -174,9 +200,12 @@ interface AnimalType {
   name: string
   category: string
   description: string
-  status: 'active' | 'inactive'
+  tracking_mode: 'group_only' | 'individual_only' | 'both'
+  count_label: string
+  status: 1 | 0
 }
 
+const animalCategories = ['livestock', 'poultry', 'apiculture', 'aquaculture']
 const { $apiFetch } = useNuxtApp()
 const { isOnline } = useOffline()
 
@@ -192,11 +221,13 @@ const form = ref({
   name: '',
   category: '',
   description: '',
-  status: 'active' as 'active' | 'inactive'
+  tracking_mode: 'both' as 'group_only' | 'individual_only' | 'both',
+  count_label: '',
+  status: 1 as 1 | 0
 })
 
 const resetForm = () => {
-  form.value = { name: '', category: '', description: '', status: 'active' }
+  form.value = { name: '', category: '', description: '', tracking_mode: 'both', count_label: '', status: 1 }
   isEditing.value = false
   editingUuid.value = null
 }
@@ -221,7 +252,7 @@ const submitForm = async () => {
 
     if (isEditing.value && editingUuid.value) {
       if (isOnline.value) {
-        const response = await $apiFetch<{ status: string; message: string; data: AnimalType }>(`/api/v1/settings/livestock/animal-types/${editingUuid.value}`, {
+        const response = await $apiFetch<{ status: string; message: string; data: AnimalType }>(`/api/v1/settings/animals/animal-types/${editingUuid.value}`, {
           method: 'PUT',
           body: form.value
         })
@@ -238,7 +269,7 @@ const submitForm = async () => {
     } else {
       let newItem: AnimalType
       if (isOnline.value) {
-        const response = await $apiFetch<{ status: string; message: string; data: AnimalType }>('/api/v1/settings/livestock/animal-types', {
+        const response = await $apiFetch<{ status: string; message: string; data: AnimalType }>('/api/v1/settings/animals/animal-types', {
           method: 'POST',
           body: form.value
         })
@@ -265,16 +296,16 @@ const fetchData = async () => {
   try {
     if (isOnline.value) {
       await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: AnimalType[] }>('/api/v1/settings/livestock/animal-types/list')
+      const response = await $apiFetch<{ data: AnimalType[] }>('/api/v1/settings/animals/animal-types/list')
       animalTypes.value = response.data || response as unknown as AnimalType[]
     } else {
       // Fallback to local JSON data when offline
-      animalTypes.value = mockData.animalTypes as AnimalType[]
+      // animalTypes.value = mockData.animalTypes as AnimalType[]
     }
   } catch (err: any) {
     console.error('Failed to fetch animal types:', err)
     // Fallback to mock data on error
-    animalTypes.value = mockData.animalTypes as AnimalType[]
+    // animalTypes.value = mockData.animalTypes as AnimalType[]
   } finally {
     loading.value = false
   }
@@ -287,6 +318,8 @@ const editItem = (item: AnimalType) => {
     name: item.name,
     category: item.category,
     description: item.description,
+    tracking_mode: item.tracking_mode ?? 'both',
+    count_label: item.count_label ?? '',
     status: item.status
   }
   showModal.value = true
@@ -298,7 +331,7 @@ const deleteItem = async (uuid?: string) => {
   try {
     if (isOnline.value) {
       await $apiFetch('/sanctum/csrf-cookie')
-      await $apiFetch(`/api/v1/settings/livestock/animal-types/${uuid}`, { method: 'DELETE' })
+      await $apiFetch(`/api/v1/settings/animals/animal-types/${uuid}`, { method: 'DELETE' })
     }
     animalTypes.value = animalTypes.value.filter(item => item.uuid !== uuid)
   } catch (err: any) {
