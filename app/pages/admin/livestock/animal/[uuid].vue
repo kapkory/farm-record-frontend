@@ -501,7 +501,7 @@
 
 <script lang="ts" setup>
 import { ArrowLeft, Tag, Users, Pencil, Trash2, Plus, HeartPulse, Syringe, Clock, X } from 'lucide-vue-next'
-import mockData from '~/data/animals.json'
+// import mockData from '~/data/animals.json'
 
 definePageMeta({
   middleware: ['auth'],
@@ -671,8 +671,11 @@ const submitHealthRecord = async () => {
     } else {
       healthRecords.value.unshift({
         uuid: `temp-${Date.now()}`,
-        ...healthForm.value,
+        date: healthForm.value.date!,
+        type: healthForm.value.type,
+        description: healthForm.value.description,
         vet_name: healthForm.value.vet_name || null,
+        outcome: healthForm.value.outcome,
         next_due_date: healthForm.value.next_due_date || null,
         cost: null
       })
@@ -696,7 +699,8 @@ const submitTreatment = async () => {
     } else {
       treatments.value.unshift({
         uuid: `temp-${Date.now()}`,
-        ...treatmentForm.value,
+        date: treatmentForm.value.date!,
+        treatment_type: treatmentForm.value.treatment_type,
         product_name: treatmentForm.value.product_name || null,
         dosage: treatmentForm.value.dosage || null,
         administered_by: treatmentForm.value.administered_by || null,
@@ -715,24 +719,12 @@ const fetchAnimal = async () => {
   loadError.value = null
 
   try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: Animal }>(`/api/v1/livestock/${uuid}`)
-      animal.value = response.data || response as unknown as Animal
-    } else {
-      const found = mockData.animals.find(a => a.uuid === uuid)
-      if (!found) throw new Error('Animal not found')
-      animal.value = found as unknown as Animal
-    }
+    await $apiFetch('/sanctum/csrf-cookie')
+    const response = await $apiFetch<{ data: Animal }>(`/api/v1/farms/farm/animals/livestocks/${uuid}`)
+    animal.value = response.data || response as unknown as Animal
   } catch (err: any) {
     console.error('Failed to fetch animal:', err)
-    // Fallback to mock data
-    const found = mockData.animals.find(a => a.uuid === uuid)
-    if (found) {
-      animal.value = found as unknown as Animal
-    } else {
-      loadError.value = err.message || 'Failed to load animal details'
-    }
+    loadError.value = err.message || 'Failed to load animal details'
   } finally {
     loading.value = false
   }
@@ -743,11 +735,9 @@ const fetchHealthRecords = async () => {
     if (isOnline.value) {
       const response = await $apiFetch<{ data: HealthRecord[] }>(`/api/v1/livestock/${uuid}/health-records`)
       healthRecords.value = response.data || response as unknown as HealthRecord[]
-    } else {
-      healthRecords.value = (mockData.healthRecords?.filter(r => r.animal_uuid === uuid) || []) as unknown as HealthRecord[]
     }
-  } catch {
-    healthRecords.value = (mockData.healthRecords?.filter(r => r.animal_uuid === uuid) || []) as unknown as HealthRecord[]
+  } catch (err) {
+    console.error('Failed to fetch health records:', err)
   }
 }
 
