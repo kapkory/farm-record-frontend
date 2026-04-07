@@ -117,51 +117,15 @@
         </div>
 
         <!-- Livestock with Dropdown -->
-        <div>
-          <button 
-            @click="toggleDropdown('livestock')"
-            class="w-full flex items-center justify-between px-4 py-3 text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
-            :class="{'bg-green-50 text-green-600': $route.path.startsWith('/admin/livestock')}"
-          >
-            <div class="flex items-center">
-              <!-- Animal Paw Icon -->
-              <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24">
+         <NuxtLink 
+          to="/admin/livestock"
+          class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8.5 12c1.38 0 2.5-1.12 2.5-2.5S9.88 7 8.5 7 6 8.12 6 9.5 7.12 12 8.5 12zm7 0c1.38 0 2.5-1.12 2.5-2.5S16.88 7 15.5 7 13 8.12 13 9.5s1.12 2.5 2.5 2.5zM6 16.5c0-1.38-1.12-2.5-2.5-2.5S1 15.12 1 16.5 2.12 19 3.5 19 6 17.88 6 16.5zm14.5-2.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5 2.5-1.12 2.5-2.5-1.12-2.5-2.5-2.5zM12 13c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/>
               </svg>
-              <span class="font-medium">Livestock</span>
-            </div>
-            <svg 
-              class="w-4 h-4 transition-transform duration-200"
-              :class="{'rotate-180': openDropdowns.livestock}"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
-          </button>
-          <div 
-            v-show="openDropdowns.livestock"
-            class="ml-4 mt-1 space-y-1"
-          >
-            <NuxtLink 
-              to="/admin/livestock"
-              class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
-            >
-              All Livestock
-            </NuxtLink>
-            <NuxtLink 
-              to="/admin/livestock/health"
-              class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
-            >
-              Health Records
-            </NuxtLink>
-            <NuxtLink 
-              to="/admin/livestock/breeding"
-              class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
-            >
-              Breeding Program
-            </NuxtLink>
-          </div>
-        </div>
+          <span class="font-medium">Livestocks</span>
+        </NuxtLink>
 
         <!-- Inventory -->
         <NuxtLink 
@@ -175,7 +139,7 @@
         </NuxtLink>
 
         <!-- Reports with Dropdown -->
-        <div>
+        <!-- <div>
           <button 
             @click="toggleDropdown('reports')"
             class="w-full flex items-center justify-between px-4 py-3 text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
@@ -218,7 +182,7 @@
               Custom Reports
             </NuxtLink>
           </div>
-        </div>
+        </div> -->
 
         <!-- Users -->
         <NuxtLink 
