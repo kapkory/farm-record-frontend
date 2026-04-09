@@ -16,7 +16,6 @@
     }
   ],
   "compilerOptions": {
-    "baseUrl": ".", // Set the base URL for module resolution
     "paths": {
           "~/*": ["./*"] // Maps anything starting with ~ to the baseUrl
         }

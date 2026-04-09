@@ -12,6 +12,23 @@ export default defineNuxtConfig({
     '@pinia/nuxt'
   ],
   css: ['~/assets/css/main.css'],
+  app: {
+    head: {
+      meta: [
+        { name: 'theme-color', content: '#10B981' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+        { name: 'apple-mobile-web-app-title', content: 'Farmconsul' },
+      ],
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
+        { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+      ]
+    }
+  },
   components: [
     {
       path: '~/components',
@@ -20,7 +37,7 @@ export default defineNuxtConfig({
   ],
   runtimeConfig:{
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://farm-app-backend.test'
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://farmconsul.com/'
     }
   },
   pwa: {
@@ -34,31 +51,37 @@ export default defineNuxtConfig({
       display: 'standalone',
       orientation: 'portrait',
       scope: '/',
-      start_url: '/admin',
+      start_url: '/',
       icons: [
         {
-          src: '/icon-192x192.png',
+          src: '/android-chrome-192x192.png',
           sizes: '192x192',
           type: 'image/png',
           purpose: 'any'
         },
         {
-          src: '/icon-512x512.png',
+          src: '/android-chrome-512x512.png',
           sizes: '512x512',
           type: 'image/png',
           purpose: 'any'
         },
         {
-          src: '/icon-maskable-192x192.png',
+          src: '/android-chrome-192x192.png',
           sizes: '192x192',
           type: 'image/png',
           purpose: 'maskable'
         },
         {
-          src: '/icon-maskable-512x512.png',
+          src: '/android-chrome-512x512.png',
           sizes: '512x512',
           type: 'image/png',
           purpose: 'maskable'
+        },
+        {
+          src: '/apple-touch-icon.png',
+          sizes: '180x180',
+          type: 'image/png',
+          purpose: 'any'
         }
       ]
     },
