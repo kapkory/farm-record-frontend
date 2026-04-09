@@ -4,7 +4,8 @@ import { useSanctum } from '~/composables/useSanctum'
 export const useAuth = () => {
   const { ensureCsrf } = useSanctum()
   const config = useRuntimeConfig()
-  const base = (config.public.apiBase || '').replace(/\/+$/, '')
+  const rawBase = (config.public.apiBase || '').replace(/\/+$/, '')
+  const base = /^http:\/\/(?!localhost|127\.0\.0\.1)/i.test(rawBase) ? rawBase.replace(/^http:\/\//i, 'https://') : rawBase
 
   const getCookie = (name: string) => {
     if (typeof document === 'undefined') return ''

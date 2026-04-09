@@ -1,8 +1,18 @@
+function enforceHttps(url: string): string {
+  if (!url) return url;
+  const trimmed = url.replace(/\/+$/, '');
+  // Upgrade http:// to https:// for all non-local origins
+  if (/^http:\/\/(?!localhost|127\.0\.0\.1)/i.test(trimmed)) {
+    return trimmed.replace(/^http:\/\//i, 'https://');
+  }
+  return trimmed;
+}
+
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig();
   
   const apiFetch = $fetch.create({
-    baseURL: (config.public.apiBase || '').replace(/\/+$/, ''),
+    baseURL: enforceHttps(config.public.apiBase || ''),
     credentials: 'include',
     headers: {
       'Accept': 'application/json',
