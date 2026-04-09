@@ -227,9 +227,9 @@
         </div>
 
         <div class="p-4">
-          <AnimalTransactionTab v-if="activeTab === 'overview'" :animal-uuid="uuid" />
+          <AnimalTransactionTab v-if="activeTab === 'overview'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <AnimalTreatmentTab v-else-if="activeTab === 'treatments'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
-          <AnimalTaskTab v-else-if="activeTab === 'tasks'" :animal-uuid="uuid" />
+          <AnimalTaskTab v-else-if="activeTab === 'tasks'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <div v-else class="text-center py-8">
             <Clock class="w-10 h-10 text-gray-300 mx-auto mb-2" />
             <p class="text-sm text-gray-500">Activity timeline coming soon</p>

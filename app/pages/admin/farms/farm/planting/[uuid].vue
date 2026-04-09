@@ -918,7 +918,7 @@ const fetchLedgerTransactions = async () => {
     }
 
     await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data?: LedgerTransactionListItem[] }>('/api/v1/farms/farm/transactions/list')
+    const response = await $apiFetch<{ data?: LedgerTransactionListItem[] }>('/api/v1/farms/farm/transactions/list/planting/' + plantingUuid.value)
     const records = response.data ?? []
 
     ledgerTransactions.value = records

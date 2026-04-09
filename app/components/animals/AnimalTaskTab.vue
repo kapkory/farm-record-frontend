@@ -212,7 +212,7 @@
 <script lang="ts" setup>
 import { Plus, X } from 'lucide-vue-next'
 
-const props = defineProps<{ animalUuid: string }>()
+const props = defineProps<{ animalUuid: string; trackingType?: 'individual' | 'group' }>()
 
 const {
   tasks,
@@ -236,5 +236,5 @@ const {
   closeModal,
   fetchTasks,
   saveTask
-} = useAnimalTasks(props.animalUuid)
+} = useAnimalTasks(props.animalUuid, props.trackingType ?? 'individual')
 </script>

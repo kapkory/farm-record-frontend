@@ -33,7 +33,7 @@ type TaskFormErrorKey =
   | 'parent_task_id'
 type TaskValidationErrors = Partial<Record<TaskFormErrorKey, string>>
 
-export const useAnimalTasks = (animalUuid: string) => {
+export const useAnimalTasks = (animalUuid: string, trackingType: 'individual' | 'group' = 'individual') => {
   const { $apiFetch } = useNuxtApp()
   const { isOnline } = useOffline()
 
@@ -159,9 +159,10 @@ export const useAnimalTasks = (animalUuid: string) => {
     try {
       if (!isOnline.value) { tasks.value = []; return }
       await $apiFetch('/sanctum/csrf-cookie')
+      const taskable_type = trackingType === 'group' ? 'animal_group' : 'animal'
       const response = await $apiFetch<{ data?: AnimalTaskRecord[] }>(
         `/api/v1/tasks/list/${animalUuid}`,
-        { params: { taskable_type: 'livestock' } }
+        { params: { taskable_type } }
       )
       tasks.value = response.data ?? []
     } catch (err) {
@@ -187,7 +188,7 @@ export const useAnimalTasks = (animalUuid: string) => {
       due_date: taskForm.value.due_date || null,
       assigned_to_user_id: toNumberOrNull(taskForm.value.assigned_to_user_id),
       parent_task_id: toNumberOrNull(taskForm.value.parent_task_id),
-      taskable_type: 'livestock',
+      taskable_type: trackingType === 'group' ? 'animal_group' : 'animal',
       taskable_uuid: animalUuid
     }
 

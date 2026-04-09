@@ -253,7 +253,7 @@
 <script lang="ts" setup>
 import { Plus, X } from 'lucide-vue-next'
 
-const props = defineProps<{ animalUuid: string }>()
+const props = defineProps<{ animalUuid: string; trackingType?: 'individual' | 'group' }>()
 
 const {
   ledgerTypeOptions,
@@ -290,5 +290,5 @@ const {
   openLedgerModal,
   closeLedgerModal,
   submitLedgerTransaction,
-} = useAnimalTransactions(props.animalUuid)
+} = useAnimalTransactions(props.animalUuid, props.trackingType ?? 'individual')
 </script>

@@ -104,7 +104,7 @@ export const ledgerTypeOptions = [
   }
 ]
 
-export const useAnimalTransactions = (animalUuid: string) => {
+export const useAnimalTransactions = (animalUuid: string, trackingType: 'individual' | 'group' = 'individual') => {
   const { $apiFetch } = useNuxtApp()
   const { isOnline } = useOffline()
 
@@ -370,10 +370,13 @@ export const useAnimalTransactions = (animalUuid: string) => {
     try {
       if (!isOnline.value) { ledgerTransactions.value = []; return }
       await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data?: LedgerTransactionListItem[] }>('/api/v1/farms/farm/transactions/list')
+      const transactionable_type = trackingType === 'group' ? 'animal_group' : 'animal'
+      const transactionable_uuid = animalUuid
+      const response = await $apiFetch<{ data?: LedgerTransactionListItem[] }>(
+        `/api/v1/farms/farm/transactions/list/${transactionable_type}/${transactionable_uuid}`
+      )
       const records = response.data ?? []
       ledgerTransactions.value = records
-        .filter((t) => t.transaction_for === 'livestock' && t.transaction_uuid === animalUuid)
         .flatMap(mapTransactionToRow)
     } catch (err) {
       console.error('Failed to fetch ledger transactions:', err)

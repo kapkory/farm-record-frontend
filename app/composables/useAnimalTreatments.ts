@@ -147,7 +147,7 @@ export const useAnimalTreatments = (animalUuid: string, trackingType: 'individua
       if (!isOnline.value) { treatments.value = []; return }
       await $apiFetch('/sanctum/csrf-cookie')
       const response = await $apiFetch<{ data?: AnimalTreatmentRecord[] }>(
-        `/api/v1/livestock/${animalUuid}/treatments`
+        `/api/v1/farms/farm/crops/treatments/list/${animalUuid}?model=${trackingType === 'group' ? 'animal_group' : 'animal'}`
       )
       treatments.value = (response.data ?? []).map(r => ({
         ...r,
