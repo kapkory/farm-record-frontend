@@ -89,7 +89,9 @@ export default defineNuxtConfig({
       ]
     },
     workbox: {
-      navigateFallback: '/index.html',
+      // No navigateFallback — Nginx already handles SPA routing via
+      // try_files, so setting this causes workbox to throw non-precached-url
+      // errors when /index.html doesn't appear in the precache manifest.
       globPatterns: ['**/*.{js,css,html,png,svg,ico,json}'],
       runtimeCaching: [
         {
