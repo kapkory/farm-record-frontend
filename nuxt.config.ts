@@ -37,7 +37,7 @@ export default defineNuxtConfig({
   ],
   runtimeConfig:{
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://farmconsul.com/'
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'https://api.farmconsul.com'
     }
   },
   pwa: {
@@ -86,7 +86,7 @@ export default defineNuxtConfig({
       ]
     },
     workbox: {
-      navigateFallback: '/admin',
+      navigateFallback: '/index.html',
       globPatterns: ['**/*.{js,css,html,png,svg,ico,json}'],
       runtimeCaching: [
         {
