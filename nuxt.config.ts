@@ -42,6 +42,9 @@ export default defineNuxtConfig({
   },
   pwa: {
     registerType: 'autoUpdate',
+    // Use the same filename as the old @nuxtjs/pwa-generated file so the
+    // next deployment overwrites the stale HTTP-URL service worker.
+    filename: 'serviceworker.js',
     manifest: {
       name: 'Farmconsul — Smart Farm Management',
       short_name: 'Farmconsul',
@@ -118,7 +121,12 @@ export default defineNuxtConfig({
           }
         },
         {
-          urlPattern: /\/api\/.*/i,
+          // Auth & CSRF endpoints must always hit the network — never cache.
+          urlPattern: /^https:\/\/api\.farmconsul\.com\/(login|logout|register|sanctum).*/i,
+          handler: 'NetworkOnly',
+        },
+        {
+          urlPattern: /^https:\/\/api\.farmconsul\.com\/api\/.*/i,
           handler: 'NetworkFirst',
           options: {
             cacheName: 'api-cache',
