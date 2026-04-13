@@ -406,7 +406,7 @@ export const useAnimalTransactions = (animalUuid: string, trackingType: 'individ
       payment_method: ledgerForm.value.payment_method || null,
       description: ledgerForm.value.notes || null,
       reference_number: ledgerForm.value.reference_number || null,
-      transaction_for: 'livestock',
+      transaction_for: trackingType === 'group' ? 'animal_group' : 'animal',
       type: ledgerForm.value.type,
       transaction_uuid: animalUuid,
       entries: [
