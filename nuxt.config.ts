@@ -147,7 +147,7 @@ export default defineNuxtConfig({
           }
         },
         {
-          urlPattern: /\/_nuxt\/.*/,
+          urlPattern: /^https:\/\/farmconsul\.com\/_nuxt\/.*/i,
           handler: 'CacheFirst',
           options: {
             cacheName: 'nuxt-cache',
@@ -158,7 +158,7 @@ export default defineNuxtConfig({
           }
         },
         {
-          urlPattern: /\/admin.*/,
+          urlPattern: /^https:\/\/farmconsul\.com\/admin.*/i,
           handler: 'NetworkFirst',
           options: {
             cacheName: 'pages-cache',
