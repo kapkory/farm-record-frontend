@@ -20,7 +20,7 @@
                 : 'bg-white text-gray-600 hover:bg-gray-50',
             ]"
           >
-            {{ v.label }}
+            {{ v.key === 'month' ? currentMonthName : v.label }}
           </button>
         </div>
         <button
@@ -358,8 +358,12 @@ const activeView = ref<ViewKey>('month')
 // currentDate drives nav (month start / week start / day)
 const currentDate = ref(new Date())
 const selectedDate = ref<string>(toDateStr(new Date()))
-
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// Current month name for the view toggle button
+const currentMonthName = computed(() =>
+  currentDate.value.toLocaleString('default', { month: 'long' })
+)
 
 // ─── Nav title ────────────────────────────────────────────────────────────────
 const navTitle = computed(() => {
@@ -517,11 +521,6 @@ async function fetchCalendarTasks() {
     const response = await $apiFetch<{ data: CalendarApiTask[] }>('/api/v1/tasks/calendar')
     const tasks = Array.isArray(response) ? response : (response?.data ?? [])
     allTasks.value = tasks
-
-    const firstScheduledTask = tasks.find(task => task.date)
-    if (firstScheduledTask?.date) {
-      selectDate(firstScheduledTask.date)
-    }
   } catch (error) {
     console.error('Failed to fetch calendar tasks', error)
     calendarError.value = 'Unable to load calendar tasks right now.'
