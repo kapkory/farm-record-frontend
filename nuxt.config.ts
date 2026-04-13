@@ -6,7 +6,6 @@ export default defineNuxtConfig({
   modules: [
     '@nuxt/image',
     '@nuxt/scripts',
-    '@nuxt/hints',
     '@nuxtjs/tailwindcss',
     '@vite-pwa/nuxt',
     '@pinia/nuxt'
@@ -89,6 +88,33 @@ export default defineNuxtConfig({
           purpose: 'any'
         }
       ]
+    },
+    workbox: {
+      runtimeCaching: [
+        {
+          urlPattern: /^https:\/\/farmconsul\.com\/.*/i,
+          handler: 'NetworkFirst',
+          options: {
+            cacheName: 'api-cache',
+            expiration: {
+              maxEntries: 50,
+              maxAgeSeconds: 86400,
+            },
+          },
+        },
+         // Cache-first for images (recipe photos, thumbnails)
+        {
+          urlPattern: ({ request }) => request.destination === 'image',
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'images',
+            expiration: {
+              maxEntries: 200,
+              maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+            }
+          }
+        }
+      ],
     },
     client: {
       installPrompt: true,
