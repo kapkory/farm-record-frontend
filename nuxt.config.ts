@@ -48,8 +48,8 @@ export default defineNuxtConfig({
     registerType: 'autoUpdate',
     // Use the same filename as the old @nuxtjs/pwa-generated file so the
     // next deployment overwrites the stale HTTP-URL service worker.
-    filename: 'serviceworker.js',
-    scope: '/',
+    strategies: 'generateSW',
+    injectRegister: 'auto',
     includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'android-chrome-192x192.png', 'android-chrome-512x512.png'],
     manifest: {
       name: 'Farmconsul — Smart Farm Management',
@@ -143,7 +143,7 @@ export default defineNuxtConfig({
     },
     devOptions: {
       enabled: true, // Enable in dev to test PWA
-      type: 'module'
+      navigateFallbackAllowlist: [/^\/$/], // keep dev nav fallback sane
     }
   },
   vite: {
