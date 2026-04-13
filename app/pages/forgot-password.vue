@@ -307,17 +307,13 @@ const handleSubmit = async () => {
 // Resend email
 const resendEmail = async () => {
   if (resendCooldown.value > 0) return
-  
+
   isLoading.value = true
-  
+
   try {
-    console.log('Resending password reset email to:', form.value.email)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
+    const { forgotPassword } = useAuth()
+    await forgotPassword({ email: form.value.email })
     startCooldown()
-    
   } catch (error) {
     console.error('Resend error:', error)
   } finally {

@@ -14,6 +14,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   app: {
     head: {
+      title: 'Farmconsul — Smart Farm Management',
       meta: [
         { name: 'theme-color', content: '#10B981' },
         { name: 'mobile-web-app-capable', content: 'yes' },

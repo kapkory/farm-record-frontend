@@ -47,7 +47,7 @@ export const useAuth = () => {
   }
   
   async function forgotPassword(payload: Record<string, any>) {
-    // Laravel often exposes POST /forgot-password for password resets
+    await ensureCsrf()
     const token = getCookie('XSRF-TOKEN') || getCookie('X-CSRF-TOKEN') || ''
     const headers: Record<string, string> = { Accept: 'application/json' }
     if (token) {

@@ -29,10 +29,10 @@
         <div class="flex justify-between items-center h-16">
             <div class="flex items-center space-x-3">
             <img 
-              height="4800"
+              height="48"
               src="/farmconsul_logo.png" 
               alt="Farmconsul" 
-              class="w-10 h-40 sm:w-40 sm:h-40 object-contain"
+              class="w-20 h-20 sm:w-40 sm:h-40 object-contain"
             />
             </div>
           <div class="flex items-center space-x-3">
@@ -342,6 +342,7 @@ const canInstall = computed(() => !!deferredPrompt.value)
 onMounted(() => {
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault()
+    console.log('beforeinstallprompt event fired')
     deferredPrompt.value = e
     showInstallBanner.value = true
   })
@@ -368,11 +369,16 @@ const dismissInstallBanner = () => {
 
 useHead({
   title: 'Farmconsul — Smart Farm Management for African Farmers',
+  ogTitle: 'Farmconsul — Smart Farm Management for African Farmers',
+  ogDescription: 'Track crops, manage workers, record harvests and tasks — all from your phone. Works offline. Built for farmers across Africa.',
+  ogImage: 'https://farmconsul.com/farmconsul_logo.png',
+  twitterCard: 'summary_large_image',
   meta: [
     { name: 'description', content: 'Track crops, manage workers, record harvests and tasks — all from your phone. Works offline. Built for farmers across Africa.' },
     { name: 'apple-mobile-web-app-capable', content: 'yes' },
     { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
     { name: 'apple-mobile-web-app-title', content: 'Farmconsul' }
-  ]
+  ],
+
 })
 </script>
