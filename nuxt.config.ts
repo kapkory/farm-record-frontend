@@ -13,6 +13,9 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   app: {
     head: {
+      htmlAttrs: {
+        lang: 'en',
+      },
       title: 'Farmconsul — Smart Farm Management',
       meta: [
         { name: 'theme-color', content: '#10B981' },
@@ -26,6 +29,7 @@ export default defineNuxtConfig({
         { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
         { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
         { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+        { rel: 'manifest', href: '/manifest.webmanifest' },
       ]
     }
   },
@@ -46,6 +50,7 @@ export default defineNuxtConfig({
     // next deployment overwrites the stale HTTP-URL service worker.
     filename: 'serviceworker.js',
     scope: '/',
+    includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'android-chrome-192x192.png', 'android-chrome-512x512.png'],
     manifest: {
       name: 'Farmconsul — Smart Farm Management',
       short_name: 'Farmconsul',
@@ -90,24 +95,40 @@ export default defineNuxtConfig({
       ]
     },
     workbox: {
+      // Precache all built assets
+      globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+      // Don't precache index.html since Nginx handles SPA routing
+      navigateFallback: null,
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/farmconsul\.com\/.*/i,
           handler: 'NetworkFirst',
           options: {
-            cacheName: 'api-cache',
+            cacheName: 'pages-cache',
             expiration: {
               maxEntries: 50,
               maxAgeSeconds: 86400,
             },
           },
         },
-         // Cache-first for images (recipe photos, thumbnails)
         {
-          urlPattern: ({ request }) => request.destination === 'image',
+          urlPattern: /^https:\/\/api\.farmconsul\.com\/api\/.*/i,
+          handler: 'NetworkFirst',
+          options: {
+            cacheName: 'api-cache',
+            expiration: {
+              maxEntries: 100,
+              maxAgeSeconds: 86400,
+            },
+            networkTimeoutSeconds: 10,
+          },
+        },
+        // Cache images
+        {
+          urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
           handler: 'CacheFirst',
           options: {
-            cacheName: 'images',
+            cacheName: 'images-cache',
             expiration: {
               maxEntries: 200,
               maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
@@ -121,7 +142,7 @@ export default defineNuxtConfig({
       periodicSyncForUpdates: 3600 // Check for updates every hour
     },
     devOptions: {
-      enabled: false,
+      enabled: true, // Enable in dev to test PWA
       type: 'module'
     }
   },

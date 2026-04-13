@@ -74,7 +74,7 @@
             I already have an account
           </NuxtLink>
         </div>
-        <p class="mt-5 text-sm text-gray-400">No credit card · Works offline · Free to start · Install on your phone</p>
+        <p class="mt-5 text-sm text-gray-500">No credit card · Works offline · Free to start · Install on your phone</p>
       </div>
 
       <!-- Trust signals -->
@@ -306,7 +306,7 @@
           class="inline-block bg-green-500 hover:bg-green-600 text-white text-xl font-bold px-12 py-5 rounded-2xl shadow-lg transition-colors">
           Start Managing Your Farm →
         </NuxtLink>
-        <p class="mt-6 text-sm text-gray-400">Free to start · Works on any phone · No experience needed</p>
+        <p class="mt-6 text-sm text-gray-500">Free to start · Works on any phone · No experience needed</p>
       </div>
     </section>
 
