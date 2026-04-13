@@ -354,6 +354,7 @@ onMounted(() => {
 })
 
 const installPwa = async () => {
+  console.log("install pwa function executed")
   if (!deferredPrompt.value) return
   deferredPrompt.value.prompt()
   const { outcome } = await deferredPrompt.value.userChoice

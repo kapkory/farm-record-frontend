@@ -46,6 +46,7 @@ export default defineNuxtConfig({
     // Use the same filename as the old @nuxtjs/pwa-generated file so the
     // next deployment overwrites the stale HTTP-URL service worker.
     filename: 'serviceworker.js',
+    scope: '/',
     manifest: {
       name: 'Farmconsul — Smart Farm Management',
       short_name: 'Farmconsul',
@@ -90,9 +91,11 @@ export default defineNuxtConfig({
       ]
     },
     workbox: {
-      // No navigateFallback — Nginx already handles SPA routing via
-      // try_files, so setting this causes workbox to throw non-precached-url
-      // errors when /index.html doesn't appear in the precache manifest.
+      // skipWaiting + cleanupOutdatedCaches ensure the new SW takes over
+      // immediately and purges caches left by the old broken SW.
+      skipWaiting: true,
+      clientsClaim: true,
+      cleanupOutdatedCaches: true,
       globPatterns: ['**/*.{js,css,html,png,svg,ico,json}'],
       runtimeCaching: [
         {
