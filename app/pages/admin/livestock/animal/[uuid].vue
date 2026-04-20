@@ -211,7 +211,7 @@
         <div class="border-b border-gray-200">
           <nav class="flex -mb-px">
             <button
-              v-for="tab in tabs"
+              v-for="tab in tabs.filter(t => !(t.key === 'breedings' && animal?.tracking_type !== 'individual'))"
               :key="tab.key"
               @click="activeTab = tab.key"
               :class="[
@@ -229,7 +229,7 @@
         <div class="p-4">
           <AnimalTransactionTab v-if="activeTab === 'overview'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <AnimalTreatmentTab v-else-if="activeTab === 'treatments'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
-          <AnimalBreedingTab v-else-if="activeTab === 'breedings'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
+          <AnimalBreedingTab v-else-if="activeTab === 'breedings'" :animal-uuid="uuid" :tracking-type="animal.tracking_type"  v-if="animal.tracking_type == 'individual'"/>
           <AnimalTaskTab v-else-if="activeTab === 'tasks'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <div v-else class="text-center py-8">
             <Clock class="w-10 h-10 text-gray-300 mx-auto mb-2" />
