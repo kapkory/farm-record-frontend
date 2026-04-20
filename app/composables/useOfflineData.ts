@@ -1,6 +1,6 @@
 // Composable for managing offline-first data operations
 import { ref } from 'vue'
-import { db, type Farm, type SyncQueue } from '../utils/db'
+import { db, type Farm, type Breeding, type SyncQueue } from '../utils/db'
 
 export const useOfflineData = () => {
   const { isOnline } = useOffline()
@@ -145,10 +145,111 @@ export const useOfflineData = () => {
     }
   }
 
+  // Breeding operations
+  const saveBreeding = async (breeding: Partial<Breeding> & { animal_uuid: string }) => {
+    const breedingData: Breeding = {
+      id: breeding.id || crypto.randomUUID(),
+      animal_uuid: breeding.animal_uuid,
+      farm_id: breeding.farm_id ?? null,
+      dam_id: breeding.dam_id ?? null,
+      sire_id: breeding.sire_id ?? null,
+      sire_type: breeding.sire_type || 'natural',
+      service_date: breeding.service_date || new Date().toISOString().split('T')[0],
+      expected_birth_date: breeding.expected_birth_date ?? null,
+      status: breeding.status || 'pending',
+      ai_straw_code: breeding.ai_straw_code ?? null,
+      ai_bull_name: breeding.ai_bull_name ?? null,
+      ai_technician: breeding.ai_technician ?? null,
+      notes: breeding.notes ?? null,
+      synced: false,
+      createdAt: breeding.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    try {
+      await db.addBreeding(breedingData)
+
+      const syncItem: SyncQueue = {
+        id: crypto.randomUUID(),
+        action: breeding.id ? 'update' : 'create',
+        entity: 'breeding',
+        data: { ...breedingData, _localId: breedingData.id },
+        timestamp: Date.now(),
+        synced: false
+      }
+      await db.addToSyncQueue(syncItem)
+
+      if (isOnline.value) {
+        try {
+          console.log('Breeding saved online:', breedingData)
+          breedingData.synced = true
+          await db.addBreeding(breedingData)
+          await db.markSynced(syncItem.id)
+        } catch (error) {
+          console.error('Failed to sync breeding online, will retry later:', error)
+        }
+      }
+
+      return breedingData
+    } catch (error) {
+      console.error('Error saving breeding:', error)
+      throw error
+    }
+  }
+
+  const getBreedings = async (animalUuid: string): Promise<Breeding[]> => {
+    try {
+      const breedings = await db.getBreedingsByAnimal(animalUuid)
+
+      if (isOnline.value) {
+        try {
+          console.log('Getting breedings from local DB (would fetch from API if connected)')
+        } catch (error) {
+          console.error('Failed to fetch breedings from API, using local data:', error)
+        }
+      }
+
+      return breedings
+    } catch (error) {
+      console.error('Error getting breedings:', error)
+      return []
+    }
+  }
+
+  const deleteBreeding = async (id: string) => {
+    try {
+      const syncItem: SyncQueue = {
+        id: crypto.randomUUID(),
+        action: 'delete',
+        entity: 'breeding',
+        data: { uuid: id },
+        timestamp: Date.now(),
+        synced: false
+      }
+      await db.addToSyncQueue(syncItem)
+      await db.deleteBreeding(id)
+
+      if (isOnline.value) {
+        try {
+          console.log('Breeding deleted online:', id)
+          await db.markSynced(syncItem.id)
+        } catch (error) {
+          console.error('Failed to delete breeding online, will retry later:', error)
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting breeding:', error)
+      throw error
+    }
+  }
+
   return {
     saveFarm,
     getFarms,
     deleteFarm,
+    saveBreeding,
+    getBreedings,
+    deleteBreeding,
     cacheData,
     getCachedData
   }

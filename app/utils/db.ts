@@ -1,7 +1,7 @@
 // IndexedDB wrapper for offline-first data storage
 
 const DB_NAME = 'FarmManageDB'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 export interface Farm {
   id: string
@@ -16,10 +16,29 @@ export interface Farm {
   synced: boolean
 }
 
+export interface Breeding {
+  id: string
+  animal_uuid: string
+  farm_id: number | string | null
+  dam_id: number | string | null
+  sire_id: number | string | null
+  sire_type: 'natural' | 'ai' | 'embryo'
+  service_date: string
+  expected_birth_date: string | null
+  status: 'pending' | 'born' | 'aborted' | 'failed'
+  ai_straw_code: string | null
+  ai_bull_name: string | null
+  ai_technician: string | null
+  notes: string | null
+  synced: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export interface SyncQueue {
   id: string
   action: 'create' | 'update' | 'delete'
-  entity: 'farm' | 'crop' | 'livestock' | 'inventory'
+  entity: 'farm' | 'crop' | 'livestock' | 'inventory' | 'breeding'
   data: any
   timestamp: number
   synced: boolean
@@ -59,6 +78,15 @@ class FarmManageDB {
         // Offline cache store
         if (!db.objectStoreNames.contains('cache')) {
           db.createObjectStore('cache', { keyPath: 'key' })
+        }
+
+        // Breedings store (added in v2)
+        if (!db.objectStoreNames.contains('breedings')) {
+          const breedingStore = db.createObjectStore('breedings', { keyPath: 'id' })
+          breedingStore.createIndex('animal_uuid', 'animal_uuid', { unique: false })
+          breedingStore.createIndex('farm_id', 'farm_id', { unique: false })
+          breedingStore.createIndex('status', 'status', { unique: false })
+          breedingStore.createIndex('synced', 'synced', { unique: false })
         }
       }
     })
@@ -175,6 +203,67 @@ class FarmManageDB {
         synced.forEach(item => store.delete(item.id))
       }
       getAllReq.onerror = () => reject(getAllReq.error)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  }
+
+  // Breeding operations
+  async addBreeding(breeding: Breeding): Promise<void> {
+    if (!this.db) await this.init()
+    const tx = this.db!.transaction('breedings', 'readwrite')
+    const store = tx.objectStore('breedings')
+    store.put(breeding)
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  }
+
+  async getBreeding(id: string): Promise<Breeding | undefined> {
+    if (!this.db) await this.init()
+    const tx = this.db!.transaction('breedings', 'readonly')
+    const store = tx.objectStore('breedings')
+    const request = store.get(id)
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async getBreedingsByAnimal(animalUuid: string): Promise<Breeding[]> {
+    if (!this.db) await this.init()
+    const tx = this.db!.transaction('breedings', 'readonly')
+    const store = tx.objectStore('breedings')
+    const index = store.index('animal_uuid')
+    const request = index.getAll(animalUuid)
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result || [])
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async getAllBreedings(): Promise<Breeding[]> {
+    if (!this.db) await this.init()
+    const tx = this.db!.transaction('breedings', 'readonly')
+    const store = tx.objectStore('breedings')
+    const request = store.getAll()
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result || [])
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async updateBreeding(breeding: Breeding): Promise<void> {
+    return this.addBreeding({ ...breeding, synced: false, updatedAt: new Date().toISOString() })
+  }
+
+  async deleteBreeding(id: string): Promise<void> {
+    if (!this.db) await this.init()
+    const tx = this.db!.transaction('breedings', 'readwrite')
+    const store = tx.objectStore('breedings')
+    store.delete(id)
+    return new Promise((resolve, reject) => {
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
     })

@@ -229,6 +229,7 @@
         <div class="p-4">
           <AnimalTransactionTab v-if="activeTab === 'overview'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <AnimalTreatmentTab v-else-if="activeTab === 'treatments'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
+          <AnimalBreedingTab v-else-if="activeTab === 'breedings'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <AnimalTaskTab v-else-if="activeTab === 'tasks'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <div v-else class="text-center py-8">
             <Clock class="w-10 h-10 text-gray-300 mx-auto mb-2" />
@@ -321,6 +322,7 @@ const showDeleteConfirm = ref(false)
 const tabs = [
   { key: 'overview', label: 'Transactions' },
   { key: 'treatments', label: 'Treatments' },
+  { key: 'breedings', label: 'Breedings' },
   { key: 'tasks', label: 'Tasks' },
   { key: 'activity', label: 'Activity' }
 ]
