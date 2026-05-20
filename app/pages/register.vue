@@ -204,7 +204,7 @@
                   <option value="" disabled>Select farm type</option>
                   <option value="individual">Individual</option>
                   <option value="group">Group</option>
-                  <option value="company">Company</option>
+                  <option value="organization">Organization</option>
                 </select>
                 <div class="absolute right-3 top-3 pointer-events-none">
                   <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
