@@ -1,4 +1,6 @@
-import { db, type Breeding, type SyncQueue } from '../utils/db'
+// Breeding records for an animal — offline-first via useOfflineEntity.
+// This composable owns only form/modal state and display helpers;
+// persistence, queueing and sync live in the generic layer.
 
 export interface BreedingRecord {
   uuid?: string
@@ -31,6 +33,7 @@ export interface BreedingRecord {
   ai_technician?: string | null
   notes?: string | null
   synced?: boolean
+  sync_error?: string | null
   created_at?: string
   updated_at?: string
 }
@@ -39,8 +42,8 @@ type BreedingFormErrorKey = 'sire_type' | 'sire_id' | 'service_date' | 'expected
 type BreedingValidationErrors = Partial<Record<BreedingFormErrorKey, string>>
 
 export const useAnimalBreedings = (animalUuid: string, trackingType: 'individual' | 'group') => {
-  const { $apiFetch } = useNuxtApp()
-  const { isOnline } = useOffline()
+  const resource = useOfflineEntity<BreedingRecord>('breeding', { animalUuid })
+  const { getReference } = useReferenceData()
 
   const today = () => new Date().toISOString().split('T')[0] ?? ''
 
@@ -56,10 +59,10 @@ export const useAnimalBreedings = (animalUuid: string, trackingType: 'individual
     notes: ''
   })
 
-  const breedings = ref<BreedingRecord[]>([])
+  const breedings = resource.items
+  const loading = resource.loading
+  const loadError = resource.loadError
   const sireOptions = ref<Array<{ uuid: string; name: string; tag_number: string | null; gender?: string }>>([])
-  const loading = ref(true)
-  const loadError = ref<string | null>(null)
   const submitting = ref(false)
   const submitError = ref<string | null>(null)
   const showModal = ref(false)
@@ -146,113 +149,15 @@ export const useAnimalBreedings = (animalUuid: string, trackingType: 'individual
 
   const fetchSires = async () => {
     try {
-      if (isOnline.value) {
-        await $apiFetch('/sanctum/csrf-cookie')
-        const response = await $apiFetch<{ data?: Array<{ uuid: string; name: string; tag_number: string | null; gender?: string }> }>(
-          '/api/v1/farms/farm/animals/livestocks/list?gender=male'
-        )
-        sireOptions.value = response.data ?? []
-      } else {
-        // Offline fallback: read from IndexedDB cache and filter males only
-        const cached = await db.getCache('livestock_list')
-        if (Array.isArray(cached)) {
-          sireOptions.value = cached.filter((a: any) => a.gender === 'male')
-        } else {
-          sireOptions.value = []
-        }
-      }
+      const { data } = await getReference<{ uuid: string; name: string; tag_number: string | null; gender?: string }>('livestock_list')
+      sireOptions.value = data.filter(a => a.gender === 'male')
     } catch (err) {
       console.error('Failed to fetch sires:', err)
       sireOptions.value = []
     }
   }
 
-  const fetchBreedings = async () => {
-    loading.value = true
-    loadError.value = null
-    try {
-      if (isOnline.value) {
-        await $apiFetch('/sanctum/csrf-cookie')
-        const response = await $apiFetch<{ data?: BreedingRecord[] }>(
-          `/api/v1/farms/farm/animals/breedings/list/${animalUuid}`
-        )
-        const records = response.data ?? []
-
-        // Store fetched records in IndexedDB for offline access
-        for (const record of records) {
-          const localRecord: Breeding = {
-            id: record.uuid || crypto.randomUUID(),
-            animal_uuid: animalUuid,
-            farm_id: record.farm_id ?? null,
-            dam_id: record.dam_id ?? null,
-            sire_id: record.sire_id ?? null,
-            sire_type: record.sire_type,
-            service_date: record.service_date,
-            expected_birth_date: record.expected_birth_date ?? null,
-            status: record.status,
-            ai_straw_code: record.ai_straw_code ?? null,
-            ai_bull_name: record.ai_bull_name ?? null,
-            ai_technician: record.ai_technician ?? null,
-            notes: record.notes ?? null,
-            synced: true,
-            createdAt: record.created_at || new Date().toISOString(),
-            updatedAt: record.updated_at || new Date().toISOString()
-          }
-          await db.addBreeding(localRecord)
-        }
-
-        breedings.value = records
-      } else {
-        // Offline: read from IndexedDB
-        const localBreedings = await db.getBreedingsByAnimal(animalUuid)
-        breedings.value = localBreedings.map(b => ({
-          uuid: b.id,
-          farm_id: b.farm_id,
-          dam_id: b.dam_id,
-          sire_id: b.sire_id,
-          sire_type: b.sire_type,
-          service_date: b.service_date,
-          expected_birth_date: b.expected_birth_date,
-          status: b.status,
-          ai_straw_code: b.ai_straw_code,
-          ai_bull_name: b.ai_bull_name,
-          ai_technician: b.ai_technician,
-          notes: b.notes,
-          synced: b.synced,
-          created_at: b.createdAt,
-          updated_at: b.updatedAt
-        }))
-      }
-    } catch (err) {
-      // Fallback to IndexedDB on API error
-      try {
-        const localBreedings = await db.getBreedingsByAnimal(animalUuid)
-        breedings.value = localBreedings.map(b => ({
-          uuid: b.id,
-          farm_id: b.farm_id,
-          dam_id: b.dam_id,
-          sire_id: b.sire_id,
-          sire_type: b.sire_type,
-          service_date: b.service_date,
-          expected_birth_date: b.expected_birth_date,
-          status: b.status,
-          ai_straw_code: b.ai_straw_code,
-          ai_bull_name: b.ai_bull_name,
-          ai_technician: b.ai_technician,
-          notes: b.notes,
-          synced: b.synced,
-          created_at: b.createdAt,
-          updated_at: b.updatedAt
-        }))
-      } catch {
-        loadError.value = err instanceof Error ? err.message : 'An error occurred while loading breedings'
-        console.error('Failed to fetch breedings:', err)
-        breedings.value = []
-      }
-    } finally {
-      loading.value = false
-    }
-  }
+  const fetchBreedings = () => resource.fetch()
 
   const saveBreeding = async () => {
     submitting.value = true
@@ -278,97 +183,13 @@ export const useAnimalBreedings = (animalUuid: string, trackingType: 'individual
       notes: form.notes || null
     }
 
-    // Save to IndexedDB first (offline-first)
-    const localId = crypto.randomUUID()
-    const localBreeding: Breeding = {
-      id: localId,
-      animal_uuid: animalUuid,
-      farm_id: null,
-      dam_id: payload.dam_id,
-      sire_id: payload.sire_id,
-      sire_type: payload.sire_type,
-      service_date: payload.service_date,
-      expected_birth_date: payload.expected_birth_date,
-      status: payload.status,
-      ai_straw_code: payload.ai_straw_code,
-      ai_bull_name: payload.ai_bull_name,
-      ai_technician: payload.ai_technician,
-      notes: payload.notes,
-      synced: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-
     try {
-      await db.addBreeding(localBreeding)
-
-      // Add to sync queue
-      const syncItem: SyncQueue = {
-        id: crypto.randomUUID(),
-        action: 'create',
-        entity: 'breeding',
-        data: { ...payload, _localId: localId },
-        timestamp: Date.now(),
-        synced: false
+      const result = await resource.create(payload)
+      if (!result.ok) {
+        setValidationErrors(result.errors)
+        submitError.value = result.message || 'Validation failed'
+        return
       }
-      await db.addToSyncQueue(syncItem)
-
-      if (isOnline.value) {
-        // Try to sync immediately
-        try {
-          await $apiFetch('/sanctum/csrf-cookie')
-          const response = await $apiFetch<{ data: BreedingRecord }>(
-            '/api/v1/farms/farm/animals/breedings',
-            { method: 'POST', body: payload }
-          )
-
-          // Update local record with server UUID and mark synced
-          const serverRecord = response.data
-          await db.deleteBreeding(localId)
-          await db.addBreeding({
-            ...localBreeding,
-            id: serverRecord.uuid || localId,
-            synced: true
-          })
-          await db.markSynced(syncItem.id)
-
-          breedings.value.unshift(serverRecord)
-        } catch (err) {
-          // API failed but local save succeeded — stays in sync queue
-          const responseData =
-            typeof err === 'object' && err !== null && 'data' in err
-              ? (err as { data?: { message?: string; errors?: Record<string, string[] | string> } }).data
-              : undefined
-
-          if (responseData?.errors) {
-            setValidationErrors(responseData.errors)
-            submitError.value = responseData?.message ?? 'Validation failed'
-            // Remove from local DB and sync queue since validation failed
-            await db.deleteBreeding(localId)
-            await db.markSynced(syncItem.id)
-            submitting.value = false
-            return
-          }
-
-          // Network/server error — record stays local with synced: false
-          console.error('API sync failed, queued for later:', err)
-          breedings.value.unshift({
-            uuid: localId,
-            ...payload,
-            synced: false,
-            created_at: localBreeding.createdAt
-          })
-        }
-      } else {
-        // Offline — add to local list with synced: false
-        breedings.value.unshift({
-          uuid: localId,
-          ...payload,
-          synced: false,
-          created_at: localBreeding.createdAt
-        })
-      }
-
       closeModal()
     } catch (err) {
       submitError.value = err instanceof Error ? err.message : 'Failed to save breeding record'
@@ -380,44 +201,7 @@ export const useAnimalBreedings = (animalUuid: string, trackingType: 'individual
 
   const updateBreedingStatus = async (breedingUuid: string, newStatus: 'pending' | 'born' | 'aborted' | 'failed') => {
     try {
-      // Update locally first
-      const existing = await db.getBreeding(breedingUuid)
-      if (existing) {
-        await db.updateBreeding({ ...existing, status: newStatus })
-      }
-
-      // Add to sync queue
-      const syncItem: SyncQueue = {
-        id: crypto.randomUUID(),
-        action: 'update',
-        entity: 'breeding',
-        data: { uuid: breedingUuid, status: newStatus },
-        timestamp: Date.now(),
-        synced: false
-      }
-      await db.addToSyncQueue(syncItem)
-
-      if (isOnline.value) {
-        try {
-          await $apiFetch('/sanctum/csrf-cookie')
-          await $apiFetch(`/api/v1/farms/farm/animals/breedings/${breedingUuid}`, {
-            method: 'PUT',
-            body: { status: newStatus }
-          })
-          await db.markSynced(syncItem.id)
-          if (existing) {
-            await db.addBreeding({ ...existing, status: newStatus, synced: true, updatedAt: new Date().toISOString() })
-          }
-        } catch (err) {
-          console.error('Failed to sync status update, queued for later:', err)
-        }
-      }
-
-      // Update local ref
-      const idx = breedings.value.findIndex(b => b.uuid === breedingUuid)
-      if (idx !== -1) {
-        breedings.value[idx] = { ...breedings.value[idx], status: newStatus }
-      }
+      await resource.update(breedingUuid, { status: newStatus })
     } catch (err) {
       console.error('Failed to update breeding status:', err)
     }
