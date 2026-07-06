@@ -86,28 +86,31 @@ export const useAuthStore = defineStore('authStore', () => {
         localStorage.setItem('auth_logged_in', 'true');
       }
 
+      // Resume any offline sync that stalled on an expired session
+      useOffline().notifyAuthenticated();
+
       return { success: true };
     } catch (err: any) {
       console.error('Login error:', err);
-      
+
       const resData = err?.response?.data || err?.data;
-      
+
       // Handle validation errors
       if (resData?.errors) {
         const validationErrors = resData.errors as ValidationErrors;
         const errorMessages: string[] = [];
-        
+
         Object.keys(validationErrors).forEach((key) => {
           const msgs = validationErrors[key];
           if (msgs && msgs.length > 0) {
             errorMessages.push(...msgs);
           }
         });
-        
+
         error.value = errorMessages.join(', ');
         return { success: false, errors: validationErrors };
       }
-      
+
       error.value = resData?.message || 'Invalid email or password';
       return { success: false, error: error.value };
     } finally {
