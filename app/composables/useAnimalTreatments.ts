@@ -1,3 +1,4 @@
+// Animal treatments — offline-first via useOfflineEntity.
 export interface AnimalTreatmentRecord {
   uuid?: string
   date?: string | null
@@ -9,6 +10,8 @@ export interface AnimalTreatmentRecord {
   notes?: string | null
   retreat_date?: string | null
   expense_amount?: number | string | null
+  synced?: boolean
+  sync_error?: string | null
 }
 
 export interface AnimalTreatmentTypeOption {
@@ -22,8 +25,12 @@ type TreatmentFormErrorKey = 'details' | 'treatment_type_id' | 'date' | 'notes' 
 type TreatmentValidationErrors = Partial<Record<TreatmentFormErrorKey, string>>
 
 export const useAnimalTreatments = (animalUuid: string, trackingType: 'individual' | 'group') => {
-  const { $apiFetch } = useNuxtApp()
-  const { isOnline } = useOffline()
+  const isGroup = trackingType === 'group'
+  const resource = useOfflineEntity<AnimalTreatmentRecord>('treatment', {
+    model: isGroup ? 'animal_group' : 'animal',
+    parentUuid: animalUuid
+  })
+  const { getReference } = useReferenceData()
 
   const today = () => new Date().toISOString().split('T')[0] ?? ''
 
@@ -37,10 +44,9 @@ export const useAnimalTreatments = (animalUuid: string, trackingType: 'individua
     expense_amount: ''
   })
 
-  const treatments = ref<AnimalTreatmentRecord[]>([])
   const treatmentTypes = ref<AnimalTreatmentTypeOption[]>([])
-  const loading = ref(true)
-  const loadError = ref<string | null>(null)
+  const loading = resource.loading
+  const loadError = resource.loadError
   const submitting = ref(false)
   const submitError = ref<string | null>(null)
   const showModal = ref(false)
@@ -75,6 +81,10 @@ export const useAnimalTreatments = (animalUuid: string, trackingType: 'individua
     if (record.treatment_type && typeof record.treatment_type === 'object') return record.treatment_type.name ?? '—'
     return '—'
   }
+
+  const treatments = computed(() =>
+    resource.items.value.map(r => ({ ...r, treatment_type_name: mapTypeName(r) }))
+  )
 
   const resetForm = () => {
     treatmentForm.value = createDefaultForm()
@@ -125,50 +135,21 @@ export const useAnimalTreatments = (animalUuid: string, trackingType: 'individua
 
   const fetchTreatmentTypes = async () => {
     try {
-      if (!isOnline.value) { treatmentTypes.value = []; return }
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data?: AnimalTreatmentTypeOption[] }>(
-        '/api/v1/settings/crops/treatment-types/list/livestock'
-      )
-      treatmentTypes.value = (response.data ?? []).map(t => ({
-        ...t,
-        status: normalizeTypeStatus(t.status)
-      }))
+      const { data } = await getReference<AnimalTreatmentTypeOption>('treatment_types_livestock')
+      treatmentTypes.value = data.map(t => ({ ...t, status: normalizeTypeStatus(t.status) }))
     } catch (err) {
       console.error('Failed to fetch animal treatment types:', err)
       treatmentTypes.value = []
     }
   }
 
-  const fetchTreatments = async () => {
-    loading.value = true
-    loadError.value = null
-    try {
-      if (!isOnline.value) { treatments.value = []; return }
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data?: AnimalTreatmentRecord[] }>(
-        `/api/v1/farms/farm/crops/treatments/list/${animalUuid}?model=${trackingType === 'group' ? 'animal_group' : 'animal'}`
-      )
-      treatments.value = (response.data ?? []).map(r => ({
-        ...r,
-        treatment_type_name: mapTypeName(r)
-      }))
-    } catch (err) {
-      loadError.value = err instanceof Error ? err.message : 'An error occurred while loading treatments'
-      console.error('Failed to fetch treatments:', err)
-      treatments.value = []
-    } finally {
-      loading.value = false
-    }
-  }
+  const fetchTreatments = () => resource.fetch()
 
   const saveTreatment = async () => {
     submitting.value = true
     submitError.value = null
     formErrors.value = {}
     errorList.value = []
-
-    const isGroup = trackingType === 'group'
 
     const payload = {
       model: isGroup ? 'animal_group' : 'animal',
@@ -188,21 +169,18 @@ export const useAnimalTreatments = (animalUuid: string, trackingType: 'individua
     }
 
     try {
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: AnimalTreatmentRecord }>(
-        `/api/v1/farms/farm/crops/treatments`,
-        { method: 'POST', body: payload }
-      )
-      treatments.value.unshift(response.data)
+      const result = await resource.create(payload, {
+        ...payload,
+        treatment_type_name: selectedTreatmentType.value?.name ?? null
+      })
+      if (!result.ok) {
+        setValidationErrors(result.errors)
+        submitError.value = result.message || 'Failed to save treatment'
+        return
+      }
       closeModal()
     } catch (err) {
-      const responseData =
-        typeof err === 'object' && err !== null && 'data' in err
-          ? (err as { data?: { message?: string; errors?: Record<string, string[] | string> } }).data
-          : undefined
-      setValidationErrors(responseData?.errors)
-      submitError.value =
-        responseData?.message ?? (err instanceof Error ? err.message : 'Failed to save treatment')
+      submitError.value = err instanceof Error ? err.message : 'Failed to save treatment'
       console.error('Failed to save treatment:', err)
     } finally {
       submitting.value = false

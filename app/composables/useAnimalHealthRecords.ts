@@ -1,3 +1,8 @@
+// Animal health records — offline-first via useOfflineEntity.
+//
+// There is no dedicated health-records endpoint; records are stored as
+// AnimalEvents (event_type 'other') with the health fields in `metadata`
+// under kind: 'health_record'.
 export interface AnimalHealthRecord {
   uuid: string
   date: string
@@ -7,14 +12,25 @@ export interface AnimalHealthRecord {
   outcome: string
   next_due_date: string | null
   cost: number | null
+  synced?: boolean
+  sync_error?: string | null
+}
+
+interface AnimalEventRecord {
+  uuid?: string
+  event_type?: string
+  date?: string | null
+  description?: string | null
+  metadata?: Record<string, any> | null
+  synced?: boolean
+  sync_error?: string | null
 }
 
 type HealthFormErrorKey = 'date' | 'type' | 'description' | 'vet_name' | 'outcome' | 'next_due_date'
 type HealthValidationErrors = Partial<Record<HealthFormErrorKey, string>>
 
 export const useAnimalHealthRecords = (animalUuid: string) => {
-  const { $apiFetch } = useNuxtApp()
-  const { isOnline } = useOffline()
+  const resource = useOfflineEntity<AnimalEventRecord>('animalEvent', { eventableUuid: animalUuid })
 
   const today = () => new Date().toISOString().split('T')[0] ?? ''
 
@@ -27,15 +43,31 @@ export const useAnimalHealthRecords = (animalUuid: string) => {
     next_due_date: ''
   })
 
-  const healthRecords = ref<AnimalHealthRecord[]>([])
-  const loading = ref(true)
-  const loadError = ref<string | null>(null)
+  const loading = resource.loading
+  const loadError = resource.loadError
   const submitting = ref(false)
   const submitError = ref<string | null>(null)
   const showModal = ref(false)
   const formErrors = ref<HealthValidationErrors>({})
   const errorList = ref<string[]>([])
   const healthForm = ref(createDefaultForm())
+
+  const healthRecords = computed<AnimalHealthRecord[]>(() =>
+    resource.items.value
+      .filter(event => event.metadata?.kind === 'health_record')
+      .map(event => ({
+        uuid: event.uuid ?? '',
+        date: event.date ?? '',
+        type: event.metadata?.type ?? event.event_type ?? '',
+        description: event.description ?? '',
+        vet_name: event.metadata?.vet_name ?? null,
+        outcome: event.metadata?.outcome ?? '',
+        next_due_date: event.metadata?.next_due_date ?? null,
+        cost: event.metadata?.cost ?? null,
+        synced: event.synced,
+        sync_error: event.sync_error
+      }))
+  )
 
   const resetForm = () => {
     healthForm.value = createDefaultForm()
@@ -70,24 +102,7 @@ export const useAnimalHealthRecords = (animalUuid: string) => {
     errorList.value = [...new Set(list)]
   }
 
-  const fetchHealthRecords = async () => {
-    loading.value = true
-    loadError.value = null
-    try {
-      if (!isOnline.value) { healthRecords.value = []; return }
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data?: AnimalHealthRecord[] }>(
-        `/api/v1/livestock/${animalUuid}/health-records`
-      )
-      healthRecords.value = response.data ?? []
-    } catch (err) {
-      loadError.value = err instanceof Error ? err.message : 'An error occurred while loading health records'
-      console.error('Failed to fetch health records:', err)
-      healthRecords.value = []
-    } finally {
-      loading.value = false
-    }
-  }
+  const fetchHealthRecords = () => resource.fetch()
 
   const saveHealthRecord = async () => {
     submitting.value = true
@@ -95,31 +110,32 @@ export const useAnimalHealthRecords = (animalUuid: string) => {
     formErrors.value = {}
     errorList.value = []
 
+    const form = healthForm.value
     const payload = {
-      date: healthForm.value.date || today(),
-      type: healthForm.value.type,
-      description: healthForm.value.description,
-      vet_name: healthForm.value.vet_name || null,
-      outcome: healthForm.value.outcome,
-      next_due_date: healthForm.value.next_due_date || null
+      eventable_type: 'animal',
+      eventable_uuid: animalUuid,
+      event_type: 'other',
+      date: form.date || today(),
+      description: form.description,
+      metadata: {
+        kind: 'health_record',
+        type: form.type,
+        vet_name: form.vet_name || null,
+        outcome: form.outcome,
+        next_due_date: form.next_due_date || null
+      }
     }
 
     try {
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: AnimalHealthRecord }>(
-        `/api/v1/livestock/${animalUuid}/health-records`,
-        { method: 'POST', body: payload }
-      )
-      healthRecords.value.unshift(response.data)
+      const result = await resource.create(payload)
+      if (!result.ok) {
+        setValidationErrors(result.errors)
+        submitError.value = result.message || 'Failed to save health record'
+        return
+      }
       closeModal()
     } catch (err) {
-      const responseData =
-        typeof err === 'object' && err !== null && 'data' in err
-          ? (err as { data?: { message?: string; errors?: Record<string, string[] | string> } }).data
-          : undefined
-      setValidationErrors(responseData?.errors)
-      submitError.value =
-        responseData?.message ?? (err instanceof Error ? err.message : 'Failed to save health record')
+      submitError.value = err instanceof Error ? err.message : 'Failed to save health record'
       console.error('Failed to save health record:', err)
     } finally {
       submitting.value = false

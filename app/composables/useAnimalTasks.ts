@@ -1,3 +1,4 @@
+// Animal tasks — offline-first via useOfflineEntity.
 type TaskPriority = 1 | 2 | 3 | 4
 type TaskStatus = 1 | 2 | 3 | 4 | 5
 
@@ -21,6 +22,8 @@ export interface AnimalTaskRecord {
   parent_task_id?: number | string | null
   sub_tasks_count?: number
   sub_tasks?: AnimalTaskRecord[]
+  synced?: boolean
+  sync_error?: string | null
 }
 
 type TaskFormErrorKey =
@@ -34,8 +37,12 @@ type TaskFormErrorKey =
 type TaskValidationErrors = Partial<Record<TaskFormErrorKey, string>>
 
 export const useAnimalTasks = (animalUuid: string, trackingType: 'individual' | 'group' = 'individual') => {
-  const { $apiFetch } = useNuxtApp()
-  const { isOnline } = useOffline()
+  const taskableType = trackingType === 'group' ? 'animal_group' : 'animal'
+  const resource = useOfflineEntity<AnimalTaskRecord>('task', {
+    taskableUuid: animalUuid,
+    taskableType
+  })
+  const { getReference } = useReferenceData()
 
   const priorityOptions: Array<{ value: TaskPriority; label: string }> = [
     { value: 1, label: 'Low' },
@@ -62,10 +69,10 @@ export const useAnimalTasks = (animalUuid: string, trackingType: 'individual' | 
     parent_task_id: ''
   })
 
-  const tasks = ref<AnimalTaskRecord[]>([])
+  const tasks = resource.items
   const farmUsers = ref<AnimalFarmUser[]>([])
-  const loading = ref(true)
-  const loadError = ref<string | null>(null)
+  const loading = resource.loading
+  const loadError = resource.loadError
   const submitting = ref(false)
   const submitError = ref<string | null>(null)
   const showModal = ref(false)
@@ -143,36 +150,15 @@ export const useAnimalTasks = (animalUuid: string, trackingType: 'individual' | 
 
   const fetchFarmUsers = async () => {
     try {
-      if (!isOnline.value) { farmUsers.value = []; return }
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data?: AnimalFarmUser[] }>('/api/v1/farms/farm/users/list')
-      farmUsers.value = response.data ?? []
+      const { data } = await getReference<AnimalFarmUser>('farm_users')
+      farmUsers.value = data
     } catch (err) {
       console.error('Failed to fetch farm users:', err)
       farmUsers.value = []
     }
   }
 
-  const fetchTasks = async () => {
-    loading.value = true
-    loadError.value = null
-    try {
-      if (!isOnline.value) { tasks.value = []; return }
-      await $apiFetch('/sanctum/csrf-cookie')
-      const taskable_type = trackingType === 'group' ? 'animal_group' : 'animal'
-      const response = await $apiFetch<{ data?: AnimalTaskRecord[] }>(
-        `/api/v1/tasks/list/${animalUuid}`,
-        { params: { taskable_type } }
-      )
-      tasks.value = response.data ?? []
-    } catch (err) {
-      loadError.value = err instanceof Error ? err.message : 'An error occurred while loading tasks'
-      console.error('Failed to fetch tasks:', err)
-      tasks.value = []
-    } finally {
-      loading.value = false
-    }
-  }
+  const fetchTasks = () => resource.fetch()
 
   const saveTask = async () => {
     submitting.value = true
@@ -180,32 +166,33 @@ export const useAnimalTasks = (animalUuid: string, trackingType: 'individual' | 
     formErrors.value = {}
     errorList.value = []
 
+    const assignedTo = toNumberOrNull(taskForm.value.assigned_to_user_id)
     const payload = {
       title: taskForm.value.title || null,
       description: taskForm.value.description || null,
       priority: Number(taskForm.value.priority),
       task_status: Number(taskForm.value.task_status),
       due_date: taskForm.value.due_date || null,
-      assigned_to_user_id: toNumberOrNull(taskForm.value.assigned_to_user_id),
+      assigned_to_user_id: assignedTo,
       parent_task_id: toNumberOrNull(taskForm.value.parent_task_id),
-      taskable_type: trackingType === 'group' ? 'animal_group' : 'animal',
+      taskable_type: taskableType,
       taskable_uuid: animalUuid
     }
 
     try {
-      await $apiFetch('/sanctum/csrf-cookie')
-      await $apiFetch('/api/v1/tasks', { method: 'POST', body: payload })
-      await fetchTasks()
+      const result = await resource.create(payload, {
+        ...payload,
+        assignee: farmUsers.value.find(u => Number(u.id) === assignedTo) ?? null
+      })
+      if (!result.ok) {
+        setValidationErrors(result.errors)
+        submitError.value = result.message || 'Failed to save task'
+        return
+      }
       resetForm()
       closeModal()
     } catch (err) {
-      const responseData =
-        typeof err === 'object' && err !== null && 'data' in err
-          ? (err as { data?: { message?: string; errors?: Record<string, string[] | string> } }).data
-          : undefined
-      setValidationErrors(responseData?.errors)
-      submitError.value =
-        responseData?.message ?? (err instanceof Error ? err.message : 'Failed to save task')
+      submitError.value = err instanceof Error ? err.message : 'Failed to save task'
       console.error('Failed to save task:', err)
     } finally {
       submitting.value = false

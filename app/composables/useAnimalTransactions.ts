@@ -105,11 +105,17 @@ export const ledgerTypeOptions = [
 ]
 
 export const useAnimalTransactions = (animalUuid: string, trackingType: 'individual' | 'group' = 'individual') => {
-  const { $apiFetch } = useNuxtApp()
-  const { isOnline } = useOffline()
+  const transactionableType = trackingType === 'group' ? 'animal_group' : 'animal'
+  const resource = useOfflineEntity<LedgerTransactionListItem & { synced?: boolean }>('transaction', {
+    model: transactionableType,
+    parentUuid: animalUuid
+  })
+  const { getReference } = useReferenceData()
 
   const ledgerAccounts = ref<AnimalLedgerAccount[]>([])
-  const ledgerTransactions = ref<AnimalLedgerTransactionRow[]>([])
+  const ledgerTransactions = computed<AnimalLedgerTransactionRow[]>(() =>
+    resource.items.value.flatMap(mapTransactionToRow)
+  )
   const ledgerAccountSearch = ref('')
   const showLedgerAccountResults = ref(false)
   const showAddLedgerModal = ref(false)
@@ -356,33 +362,15 @@ export const useAnimalTransactions = (animalUuid: string, trackingType: 'individ
 
   const fetchLedgerAccounts = async () => {
     try {
-      if (!isOnline.value) { ledgerAccounts.value = []; return }
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: AnimalLedgerAccount[] }>('/api/v1/settings/system/ledgeraccounts/list')
-      ledgerAccounts.value = response.data ?? []
+      const { data } = await getReference<AnimalLedgerAccount>('ledger_accounts')
+      ledgerAccounts.value = data
     } catch (err) {
       console.error('Failed to fetch ledger accounts:', err)
       ledgerAccounts.value = []
     }
   }
 
-  const fetchLedgerTransactions = async () => {
-    try {
-      if (!isOnline.value) { ledgerTransactions.value = []; return }
-      await $apiFetch('/sanctum/csrf-cookie')
-      const transactionable_type = trackingType === 'group' ? 'animal_group' : 'animal'
-      const transactionable_uuid = animalUuid
-      const response = await $apiFetch<{ data?: LedgerTransactionListItem[] }>(
-        `/api/v1/farms/farm/transactions/list/${transactionable_type}/${transactionable_uuid}`
-      )
-      const records = response.data ?? []
-      ledgerTransactions.value = records
-        .flatMap(mapTransactionToRow)
-    } catch (err) {
-      console.error('Failed to fetch ledger transactions:', err)
-      ledgerTransactions.value = []
-    }
-  }
+  const fetchLedgerTransactions = () => resource.fetch()
 
   const submitLedgerTransaction = async () => {
     if (!ledgerForm.value.ledger_account_id) {
@@ -420,19 +408,37 @@ export const useAnimalTransactions = (animalUuid: string, trackingType: 'individ
     }
 
     try {
-      await $apiFetch('/sanctum/csrf-cookie')
-      await $apiFetch<{ data?: { id?: number | string } }>(
-        '/api/v1/farms/farm/transactions',
-        { method: 'POST', body: payload }
-      )
-      await fetchLedgerTransactions()
+      // Optimistic copy shaped like the list response so the row mapping
+      // renders it while the record is still queued offline.
+      const display: LedgerTransactionListItem = {
+        date: payload.date,
+        payment_method: payload.payment_method,
+        description: payload.description,
+        reference_number: payload.reference_number,
+        transaction_for: payload.transaction_for,
+        transaction_uuid: payload.transaction_uuid,
+        ledger_entries: [
+          {
+            ledger_account_id: payload.entries[0]?.ledger_account_id,
+            amount,
+            quantity,
+            unit_cost: unitCost,
+            ledger_account: selectedLedgerAccount.value
+              ? { name: selectedLedgerAccount.value.name, type: selectedLedgerAccount.value.type }
+              : null
+          }
+        ]
+      }
+
+      const result = await resource.create(payload, display as Record<string, any>)
+      if (!result.ok) {
+        setLedgerValidationErrors(result.errors)
+        ledgerSubmitError.value = result.message || 'Failed to save transaction'
+        return
+      }
       closeLedgerModal()
     } catch (err: unknown) {
-      const responseData = typeof err === 'object' && err !== null && 'data' in err
-        ? (err as { data?: { message?: string; errors?: Record<string, string[] | string> } }).data
-        : undefined
-      setLedgerValidationErrors(responseData?.errors)
-      ledgerSubmitError.value = responseData?.message ?? (err instanceof Error ? err.message : 'Failed to save transaction')
+      ledgerSubmitError.value = err instanceof Error ? err.message : 'Failed to save transaction'
       console.error('Failed to save ledger transaction:', err)
     } finally {
       ledgerSubmitting.value = false
