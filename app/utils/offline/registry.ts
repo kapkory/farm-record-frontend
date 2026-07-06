@@ -20,6 +20,7 @@ export interface EntityConfig {
   endpoints: {
     list: (ctx: EntityCtx) => string
     create: (ctx: EntityCtx) => string
+    show?: (uuid: string, ctx: EntityCtx) => string
     update?: (uuid: string, ctx: EntityCtx) => string
     updateMethod?: 'PUT' | 'PATCH'
     remove?: (uuid: string, ctx: EntityCtx) => string
@@ -58,8 +59,18 @@ export const entityRegistry = {
     endpoints: {
       list: () => '/api/v1/farms/farm/animals/livestocks/list',
       create: () => '/api/v1/farms/farm/animals',
+      show: uuid => `/api/v1/farms/farm/animals/livestocks/${uuid}`,
       update: uuid => `/api/v1/farms/farm/animals/${uuid}`,
       remove: uuid => `/api/v1/farms/farm/animals/${uuid}`
+    },
+    parentOf: () => null
+  },
+
+  animalGroup: {
+    name: 'animalGroup',
+    endpoints: {
+      list: () => '/api/v1/farms/farm/animals/groups/list',
+      create: () => '/api/v1/farms/farm/animals/groups'
     },
     parentOf: () => null
   },

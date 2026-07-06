@@ -284,8 +284,6 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { $apiFetch } = useNuxtApp()
-const { isOnline } = useOffline()
 
 const uuid = route.params.uuid as string
 
@@ -312,6 +310,8 @@ interface Animal {
   notes: string | null
   last_checkup: string | null
 }
+
+const resource = useOfflineEntity<Animal & Record<string, any>>('animal')
 
 const animal = ref<Animal | null>(null)
 const loading = ref(true)
@@ -356,10 +356,7 @@ const confirmDelete = () => {
 
 const deleteAnimal = async () => {
   try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
-      await $apiFetch(`/api/v1/livestock/${uuid}`, { method: 'DELETE' })
-    }
+    await resource.remove(uuid)
     navigateTo('/admin/livestock')
   } catch (err: any) {
     console.error('Failed to delete animal:', err)
@@ -374,9 +371,11 @@ const fetchAnimal = async () => {
   loadError.value = null
 
   try {
-    await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data: Animal }>(`/api/v1/farms/farm/animals/livestocks/${uuid}`)
-    animal.value = response.data || response as unknown as Animal
+    const record = await resource.find(uuid)
+    if (!record) {
+      loadError.value = 'Animal not found'
+    }
+    animal.value = record
   } catch (err: any) {
     console.error('Failed to fetch animal:', err)
     loadError.value = err.message || 'Failed to load animal details'

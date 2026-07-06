@@ -502,8 +502,10 @@ interface AnimalBreed {
   name: string
 }
 
-const { $apiFetch } = useNuxtApp()
 const { isOnline } = useOffline()
+const { getReference } = useReferenceData()
+const animalResource = useOfflineEntity<Record<string, any>>('animal')
+const groupResource = useOfflineEntity<Record<string, any>>('animalGroup')
 const router = useRouter()
 
 const trackingType = ref<'individual' | 'group'>('individual')
@@ -570,11 +572,13 @@ const breedsForGroup = computed(() =>
 const onGroupFarmChange = async () => {
   group.value.field_id = ''
   fields.value = []
-  if (!group.value.farm_uuid || !isOnline.value) return
+  if (!group.value.farm_uuid) return
   fieldsLoading.value = true
   try {
-    const response = await $apiFetch<{ data: Field[] }>(`/api/v1/farms/fields/list/${group.value.farm_uuid}`)
-    fields.value = response.data ?? (response as unknown as Field[])
+    const { data } = await getReference<Field>(`fields_${group.value.farm_uuid}`, {
+      url: `/api/v1/farms/fields/list/${group.value.farm_uuid}`
+    })
+    fields.value = data
   } catch (err) {
     console.error('Failed to load fields:', err)
   } finally {
@@ -587,8 +591,6 @@ const submitIndividual = async () => {
   successMessage.value = null
   submitting.value = true
   try {
-    if (isOnline.value) await $apiFetch('/sanctum/csrf-cookie')
-
     const payload = {
       farm_uuid: individual.value.farm_uuid || null,
       animal_group_uuid: individual.value.animal_group_uuid || null,
@@ -604,11 +606,22 @@ const submitIndividual = async () => {
       notes: individual.value.notes || null
     }
 
-    if (isOnline.value) {
-      await $apiFetch('/api/v1/farms/farm/animals', { method: 'POST', body: payload })
+    const result = await animalResource.create(payload, {
+      ...payload,
+      tracking_type: 'individual',
+      status: 'active',
+      count: 1,
+      animal_type: animalTypes.value.find(t => t.id === Number(individual.value.animal_type_id)) ?? null,
+      breed: breeds.value.find(b => b.id === Number(individual.value.animal_breed_id)) ?? null
+    })
+    if (!result.ok) {
+      generalError.value = result.message || 'Failed to save animal'
+      return
     }
 
-    successMessage.value = 'Animal saved successfully!'
+    successMessage.value = result.synced
+      ? 'Animal saved successfully!'
+      : 'Animal saved locally — it will sync when you are back online.'
     await router.push('/admin/livestock')
   } catch (err: any) {
     console.error('Failed to save animal:', err)
@@ -623,8 +636,6 @@ const submitGroup = async () => {
   successMessage.value = null
   submitting.value = true
   try {
-    if (isOnline.value) await $apiFetch('/sanctum/csrf-cookie')
-
     const payload = {
       farm_uuid: group.value.farm_uuid || null,
       field_id: group.value.field_id || null,
@@ -638,11 +649,23 @@ const submitGroup = async () => {
       description: group.value.description || null
     }
 
-    if (isOnline.value) {
-      await $apiFetch('/api/v1/farms/farm/animals/groups', { method: 'POST', body: payload })
+    const result = await groupResource.create(payload, {
+      ...payload,
+      tracking_type: 'group',
+      status: 'active',
+      count: Number(group.value.initial_count),
+      current_count: Number(group.value.initial_count),
+      animal_type: animalTypes.value.find(t => t.id === Number(group.value.animal_type_id)) ?? null,
+      breed: breeds.value.find(b => b.id === Number(group.value.animal_breed_id)) ?? null
+    })
+    if (!result.ok) {
+      generalError.value = result.message || 'Failed to save group'
+      return
     }
 
-    successMessage.value = 'Group saved successfully!'
+    successMessage.value = result.synced
+      ? 'Group saved successfully!'
+      : 'Group saved locally — it will sync when you are back online.'
     await router.push('/admin/livestock')
   } catch (err: any) {
     console.error('Failed to save group:', err)
@@ -655,10 +678,8 @@ const submitGroup = async () => {
 const fetchFarms = async () => {
   farmsLoading.value = true
   try {
-    if (isOnline.value) {
-      const response = await $apiFetch<{ data: Farm[] }>('/api/v1/farms')
-      farms.value = response.data ?? (response as unknown as Farm[])
-    }
+    const { data } = await getReference<Farm>('farms_list')
+    farms.value = data
   } catch (err) {
     console.error('Failed to load farms:', err)
   } finally {
@@ -669,10 +690,8 @@ const fetchFarms = async () => {
 const fetchAnimalTypes = async () => {
   typesLoading.value = true
   try {
-    if (isOnline.value) {
-      const response = await $apiFetch<{ data: AnimalType[] }>('/api/v1/settings/animals/animal-types/list')
-      animalTypes.value = response.data ?? (response as unknown as AnimalType[])
-    }
+    const { data } = await getReference<AnimalType>('animal_types')
+    animalTypes.value = data
   } catch (err) {
     console.error('Failed to load animal types:', err)
   } finally {
@@ -682,10 +701,8 @@ const fetchAnimalTypes = async () => {
 
 const fetchBreeds = async () => {
   try {
-    if (isOnline.value) {
-      const response = await $apiFetch<{ data: AnimalBreed[] }>('/api/v1/settings/animals/animal-breeds/list')
-      breeds.value = response.data ?? (response as unknown as AnimalBreed[])
-    }
+    const { data } = await getReference<AnimalBreed>('animal_breeds')
+    breeds.value = data
   } catch (err) {
     console.error('Failed to load breeds:', err)
   }
@@ -694,10 +711,8 @@ const fetchBreeds = async () => {
 const fetchAnimalGroups = async () => {
   groupsLoading.value = true
   try {
-    if (isOnline.value) {
-      const response = await $apiFetch<{ data: AnimalGroup[] }>('/api/v1/farms/farm/animals/groups/list')
-      animalGroups.value = response.data ?? (response as unknown as AnimalGroup[])
-    }
+    const { data } = await getReference<AnimalGroup>('animal_groups')
+    animalGroups.value = data
   } catch (err) {
     console.error('Failed to load animal groups:', err)
   } finally {

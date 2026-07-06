@@ -11,7 +11,7 @@
 // delegate persistence here.
 import { ref, type Ref } from 'vue'
 import { db, type EntityCtx, type SyncQueueItem } from '../utils/db'
-import { entityRegistry, type EntityName } from '../utils/offline/registry'
+import { entityRegistry, type EntityConfig, type EntityName } from '../utils/offline/registry'
 
 export interface OfflineRecord {
   uuid?: string
@@ -27,7 +27,7 @@ export type MutationResult<T> =
 export const useOfflineEntity = <T extends OfflineRecord>(entity: EntityName, ctx: EntityCtx = {}) => {
   const { $apiFetch } = useNuxtApp()
   const { isOnline, syncOne, refreshCounts } = useOffline()
-  const config = entityRegistry[entity]
+  const config: EntityConfig = entityRegistry[entity]
   const parent = config.parentOf(ctx) ?? ''
 
   const items = ref<T[]>([]) as Ref<T[]>
@@ -83,6 +83,25 @@ export const useOfflineEntity = <T extends OfflineRecord>(entity: EntityName, ct
       loading.value = false
     }
     return items.value
+  }
+
+  /** Single record, API-first with IndexedDB fallback. */
+  const find = async (uuid: string): Promise<T | null> => {
+    const showUrl = config.endpoints.show?.(uuid, ctx)
+    if (showUrl && isOnline.value) {
+      try {
+        const response = await $apiFetch<any>(showUrl)
+        const record: T = response?.data ?? response
+        if (record?.uuid) {
+          await db.putRecord(entity, record.uuid, parent, record, true)
+          return decorate(record, true)
+        }
+      } catch (err) {
+        console.error(`Failed to fetch ${entity} ${uuid}, trying cache:`, err)
+      }
+    }
+    const local = await db.getRecord<T>(entity, uuid)
+    return local ? decorate(local.data, local.synced, local.syncError) : null
   }
 
   /**
@@ -224,5 +243,5 @@ export const useOfflineEntity = <T extends OfflineRecord>(entity: EntityName, ct
     await refreshCounts()
   }
 
-  return { items, loading, loadError, fromCache, fetch, create, update, remove }
+  return { items, loading, loadError, fromCache, fetch, find, create, update, remove }
 }

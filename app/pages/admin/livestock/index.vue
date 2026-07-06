@@ -266,12 +266,11 @@ interface Animal {
   last_checkup: string | null
 }
 
-const { $apiFetch } = useNuxtApp()
-const { isOnline } = useOffline()
+const resource = useOfflineEntity<Animal & { uuid?: string }>('animal')
 
-const animals = ref<Animal[]>([])
-const loading = ref(true)
-const loadError = ref<string | null>(null)
+const animals = resource.items
+const loading = resource.loading
+const loadError = resource.loadError
 
 const searchQuery = ref('')
 const filterType = ref('')
@@ -305,26 +304,7 @@ const filteredAnimals = computed(() => {
   })
 })
 
-const fetchAnimals = async () => {
-  loading.value = true
-  loadError.value = null
-
-  try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: Animal[] }>('/api/v1/farms/farm/animals/livestocks/list')
-      animals.value = response.data || response as unknown as Animal[]
-    } else {
-      // animals.value = mockData.animals as Animal[]
-    }
-  } catch (err: any) {
-    console.error('Failed to fetch animals:', err)
-    // Fallback to mock data on error
-    // animals.value = mockData.animals as Animal[]
-  } finally {
-    loading.value = false
-  }
-}
+const fetchAnimals = () => resource.fetch()
 
 onMounted(() => {
   fetchAnimals()

@@ -26,6 +26,7 @@ export const referenceEndpoints = {
   crop_varieties: '/api/v1/settings/crops/varieties/list',
   planting_schedules: '/api/v1/settings/crops/schedules/list',
   animal_types: '/api/v1/settings/animals/animal-types/list',
+  animal_groups: '/api/v1/farms/farm/animals/groups/list',
   animal_breeds: '/api/v1/settings/animals/animal-breeds/list',
   breeds: '/api/v1/settings/animals/breeds/list',
   farms_list: '/api/v1/farms?all=1'
