@@ -22,7 +22,7 @@ export interface EntityConfig {
     create: (ctx: EntityCtx) => string
     show?: (uuid: string, ctx: EntityCtx) => string
     update?: (uuid: string, ctx: EntityCtx) => string
-    updateMethod?: 'PUT' | 'PATCH'
+    updateMethod?: 'PUT' | 'PATCH' | 'POST'
     remove?: (uuid: string, ctx: EntityCtx) => string
   }
   /** Value stored in the record's `parent` index for offline list queries */
@@ -45,10 +45,10 @@ export const entityRegistry = {
     name: 'field',
     endpoints: {
       list: ctx => `/api/v1/farms/fields/list/${ctx.farmUuid ?? ''}`,
+      // The create endpoint is an upsert keyed by uuid, so updates POST there too
       create: () => '/api/v1/farms/fields',
-      // The fields endpoint is an upsert: posting with an existing uuid updates
-      update: (_uuid, _ctx) => '/api/v1/farms/fields',
-      updateMethod: 'PUT',
+      update: () => '/api/v1/farms/fields',
+      updateMethod: 'POST',
       remove: uuid => `/api/v1/farms/fields/${uuid}`
     },
     parentOf: ctx => ctx.farmUuid ?? null
@@ -151,5 +151,5 @@ export const entityRegistry = {
 export type EntityName = keyof typeof entityRegistry
 
 export function getEntityConfig(entity: string): EntityConfig | undefined {
-  return (entityRegistry as Record<string, EntityConfig>)[entity]
+  return (entityRegistry as unknown as Record<string, EntityConfig>)[entity]
 }

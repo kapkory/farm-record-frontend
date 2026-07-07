@@ -191,17 +191,17 @@ interface FormState {
   status: 'active' | 'inactive'
 }
 
-const { $apiFetch } = useNuxtApp()
-const { isOnline } = useOffline()
 const route = useRoute()
 
 // Get farm UUID from route params
 const farmUuid = computed(() => route.params.uuid as string)
 
+const resource = useOfflineEntity<Field & Record<string, any>>('field', { farmUuid: farmUuid.value })
+
 // State
-const fields = ref<Field[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
+const fields = resource.items
+const loading = resource.loading
+const error = resource.loadError
 const showModal = ref(false)
 const submitting = ref(false)
 
@@ -252,95 +252,33 @@ const closeModal = () => {
   resetForm()
 }
 
-// Fetch fields from API
-const fetchFields = async () => {
-  loading.value = true
-  error.value = null
-
-  try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: Field[] }>(`/api/v1/farms/fields/list/${farmUuid.value}`)
-      fields.value = response.data ?? (response as unknown as Field[])
-    } else {
-      // Offline fallback - could load from IndexedDB if implemented
-      fields.value = []
-    }
-  } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : 'An error occurred while loading fields'
-    console.error('Failed to fetch fields:', err)
-    error.value = errorMessage
-    fields.value = []
-  } finally {
-    loading.value = false
-  }
-}
+// Fetch fields from API (falls back to IndexedDB offline)
+const fetchFields = () => resource.fetch()
 
 // Submit form (create or update)
 const submitForm = async () => {
   submitting.value = true
 
   try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
+    const payload = {
+      name: form.value.name,
+      size: form.value.size,
+      farm_uuid: farmUuid.value,
+      description: form.value.description,
+      status: form.value.status,
+      is_active: form.value.status === 'active'
     }
 
-    if (isEditing.value) {
-      // Update existing field
-      const payload = {
-        name: form.value.name,
-        size: form.value.size,
-        uuid: form.value.id,
-        farm_uuid: farmUuid.value,
-        description: form.value.description,
-        is_active: form.value.status === 'active'
-      }
+    // The backend fields endpoint is an upsert keyed by uuid: editing sends
+    // the full payload with the existing uuid, creating omits it.
+    const result = isEditing.value
+      ? await resource.update(form.value.id, { ...payload, uuid: form.value.id })
+      : await resource.create(payload)
 
-      if (isOnline.value) {
-        const response = await $apiFetch<{ status: string; message: string; data: Field }>(
-          `/api/v1/farms/fields/${farmUuid.value}`,
-          { method: 'POST', body: payload }
-        )
-        // Update local list with server response
-        const index = fields.value.findIndex(f => (f.uuid ?? String(f.id)) === form.value.id)
-        if (index !== -1) {
-          fields.value[index] = response.data
-        }
-      } else {
-        // Offline update
-        const index = fields.value.findIndex(f => (f.uuid ?? String(f.id)) === form.value.id)
-        if (index !== -1) {
-          fields.value[index] = { ...fields.value[index], ...payload }
-        }
-      }
-    } else {
-      // Create new field
-      const payload = {
-        name: form.value.name,
-        size: form.value.size,
-        description: form.value.description,
-        uuid: null,
-        farm_uuid: farmUuid.value,
-        is_active: form.value.status === 'active'
-      }
-
-      let newField: Field
-
-      if (isOnline.value) {
-        const response = await $apiFetch<{ status: string; message: string; data: Field }>(
-          `/api/v1/farms/fields/${farmUuid.value}`,
-          { method: 'POST', body: payload }
-        )
-        newField = response.data
-      } else {
-        // Offline: generate temporary ID
-        newField = {
-          id: Date.now(),
-          ...payload
-        }
-      }
-
-      fields.value.push(newField)
+    if (!result.ok) {
+      const firstError = Object.values(result.errors)[0]?.[0]
+      alert(`Failed to save field: ${firstError ?? result.message}`)
+      return
     }
 
     closeModal()
@@ -359,11 +297,7 @@ const deleteField = async (uuid?: string) => {
   if (!confirm('Are you sure you want to delete this field?')) return
 
   try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
-      await $apiFetch(`/api/v1/farms/${farmUuid.value}/fields/${uuid}`, { method: 'DELETE' })
-    }
-    fields.value = fields.value.filter(field => field.uuid !== uuid)
+    await resource.remove(uuid)
   } catch (err: unknown) {
     console.error('Failed to delete field:', err)
     alert('Failed to delete field')

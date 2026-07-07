@@ -27,7 +27,7 @@ export type MutationResult<T> =
 export const useOfflineEntity = <T extends OfflineRecord>(entity: EntityName, ctx: EntityCtx = {}) => {
   const { $apiFetch } = useNuxtApp()
   const { isOnline, syncOne, refreshCounts } = useOffline()
-  const config: EntityConfig = entityRegistry[entity]
+  const config = entityRegistry[entity] as EntityConfig
   const parent = config.parentOf(ctx) ?? ''
 
   const items = ref<T[]>([]) as Ref<T[]>

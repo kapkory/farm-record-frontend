@@ -176,14 +176,20 @@ const loadError = ref<string | null>(null)
 const farm = ref<FarmData>({})
 
 onMounted(async () => {
+  // This endpoint returns an aggregated farm summary (counts, next harvest),
+  // not a plain record, so it is cached rather than kept in the entity store.
   try {
-    await $apiFetch('/sanctum/csrf-cookie')
     const response = await $apiFetch<{ data?: FarmData }>(`/api/v1/farms/farm/${farmId}`)
-    console.log(response)
     farm.value = response.data ?? (response as unknown as FarmData)
+    await db.setCache(`farm_summary_${farmId}`, farm.value, 24 * 60 * 60 * 1000)
   } catch (err) {
-    loadError.value = err instanceof Error ? err.message : 'Failed to load farm'
-    console.error('Failed to fetch farm:', err)
+    const cached = await db.getCache(`farm_summary_${farmId}`)
+    if (cached) {
+      farm.value = cached
+    } else {
+      loadError.value = err instanceof Error ? err.message : 'Failed to load farm'
+      console.error('Failed to fetch farm:', err)
+    }
   } finally {
     loading.value = false
   }

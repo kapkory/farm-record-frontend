@@ -286,7 +286,7 @@ definePageMeta({
   middleware: ['auth'],
 })
 
-const { $apiFetch } = useNuxtApp()
+const { getReference } = useReferenceData()
 const authStore = useAuthStore()
 
 const loading = ref(true)
@@ -411,17 +411,19 @@ function formatDate(dateStr) {
 }
 
 // --- Data fetching ---
+// Dashboard is read-only aggregation; each list falls back to its cached
+// copy when offline via the reference cache.
 async function fetchDashboardData() {
   loading.value = true
   try {
     const [farmsRes, plantingsRes, tasksRes] = await Promise.all([
-      $apiFetch('/api/v1/farms').catch(() => ({ data: [] })),
-      $apiFetch('/api/v1/farms/farm/plantings/list').catch(() => ({ data: [] })),
-      $apiFetch('/api/v1/tasks/list').catch(() => ({ data: [] })),
+      getReference('farms_list'),
+      getReference('dashboard_plantings', { url: '/api/v1/farms/farm/plantings/list', ttl: 24 * 60 * 60 * 1000 }),
+      getReference('dashboard_tasks', { url: '/api/v1/tasks/list', ttl: 24 * 60 * 60 * 1000 }),
     ])
-    farms.value = farmsRes?.data ?? farmsRes ?? []
-    plantings.value = plantingsRes?.data ?? plantingsRes ?? []
-    tasks.value = tasksRes?.data ?? tasksRes ?? []
+    farms.value = farmsRes.data
+    plantings.value = plantingsRes.data
+    tasks.value = tasksRes.data
   } finally {
     loading.value = false
   }

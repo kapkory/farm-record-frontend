@@ -267,9 +267,7 @@ definePageMeta({
   layout: 'admin'
 })
 
-const nuxtApp = useNuxtApp()
-
-const apiFetch = nuxtApp.$apiFetch
+const farmResource = useOfflineEntity<Record<string, any>>('farm')
 const router = useRouter()
 
 // Form data
@@ -368,54 +366,46 @@ const handleSubmit = async () => {
   generalError.value = ''
 
   try {
-    // Ensure CSRF cookie is set
-    await apiFetch('/sanctum/csrf-cookie')
+    const payload = {
+      name: form.value.name,
+      location: form.value.location,
+      size: form.value.size,
+      size_unit: form.value.size_unit,
+      type: form.value.farm_type,
+      ownership_type: form.value.ownership_type,
+      established_at: form.value.established_at,
+      description: form.value.description
+    }
 
-    // Create farm
-    const response = await apiFetch('/api/v1/farms', {
-      method: 'POST',
-      body: {
-        name: form.value.name,
-        location: form.value.location,
-        size: form.value.size,
-        size_unit: form.value.size_unit,
-        type: form.value.farm_type,
-        ownership_type: form.value.ownership_type,
-        established_at: form.value.established_at,
-        description: form.value.description
-      }
-    })
+    const result = await farmResource.create(payload, { ...payload, status: 'active' })
 
-    successMessage.value = 'Farm created successfully!'
-    
+    if (!result.ok) {
+      // Map backend validation errors to form fields
+      Object.keys(result.errors).forEach((key) => {
+        if (errors.value.hasOwnProperty(key)) {
+          const msgs = result.errors[key]
+          if (msgs && msgs.length > 0) {
+            errors.value[key as keyof typeof errors.value] = msgs[0] ?? ''
+          }
+        }
+      })
+      generalError.value = Object.keys(result.errors).length
+        ? 'Please correct the errors below'
+        : (result.message || 'Failed to create farm. Please try again.')
+      return
+    }
+
+    successMessage.value = result.synced
+      ? 'Farm created successfully!'
+      : 'Farm saved locally — it will sync when you are back online.'
+
     // Redirect to farms list after a short delay
     setTimeout(() => {
       router.push('/admin/farms')
     }, 1500)
-
   } catch (err: any) {
     console.error('Farm creation error:', err)
-    
-    const resData = err?.response?.data || err?.data
-
-    // Handle validation errors
-    if (resData?.errors) {
-      const validationErrors = resData.errors
-      
-      // Map backend validation errors to form fields
-      Object.keys(validationErrors).forEach((key) => {
-        if (errors.value.hasOwnProperty(key)) {
-          const msgs = validationErrors[key]
-          if (msgs && msgs.length > 0) {
-            errors.value[key as keyof typeof errors.value] = msgs[0]
-          }
-        }
-      })
-      
-      generalError.value = 'Please correct the errors below'
-    } else {
-      generalError.value = resData?.message || 'Failed to create farm. Please try again.'
-    }
+    generalError.value = err?.message || 'Failed to create farm. Please try again.'
   } finally {
     isLoading.value = false
   }

@@ -335,8 +335,7 @@ type FarmRow = {
   status: string
 }
 
-const nuxtApp = useNuxtApp()
-const apiFetch = nuxtApp.$apiFetch
+const farmResource = useOfflineEntity<FarmApi>('farm')
 
 const isFetching = ref(false)
 const fetchError = ref('')
@@ -361,10 +360,9 @@ onMounted(async () => {
   isFetching.value = true
   fetchError.value = ''
   try {
-    await apiFetch('/sanctum/csrf-cookie')
-    const response = await apiFetch<PaginatedFarmsResponse>('/api/v1/farms')
+    const records = await farmResource.fetch()
 
-    farms.value = (response?.data || []).map((farm) => ({
+    farms.value = records.map((farm) => ({
       id: farm.uuid,
       name: farm.name,
       owner: `Farmer #${farm.farmer_id}`,
@@ -375,6 +373,7 @@ onMounted(async () => {
       unit: farm.size_unit,
       status: toTitle(farm.status)
     }))
+    if (farmResource.loadError.value) fetchError.value = 'Failed to load farms.'
   } catch (err) {
     console.error('Failed to fetch farms:', err)
     fetchError.value = 'Failed to load farms.'
