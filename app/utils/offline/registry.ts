@@ -132,7 +132,8 @@ export const entityRegistry = {
     name: 'planting',
     endpoints: {
       list: ctx => `/api/v1/farms/farm/plantings/list/${ctx.farmUuid ?? ''}`,
-      create: () => '/api/v1/farms/farm/plantings'
+      create: () => '/api/v1/farms/farm/plantings',
+      show: uuid => `/api/v1/farms/farm/planting/${uuid}`
     },
     parentOf: ctx => ctx.farmUuid ?? null
   },

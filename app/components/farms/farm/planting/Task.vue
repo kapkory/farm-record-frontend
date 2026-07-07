@@ -232,8 +232,6 @@ const props = withDefaults(defineProps<{
   plantingUuid: ''
 })
 
-const { $apiFetch } = useNuxtApp()
-const { isOnline } = useOffline()
 const route = useRoute()
 
 const priorityOptions: Array<{ value: TaskPriority; label: string }> = [
@@ -253,6 +251,12 @@ const statusOptions: Array<{ value: TaskStatus; label: string }> = [
 
 const taskableUuidValue = computed(() => props.plantingUuid || String(route.params.uuid || ''))
 
+const resource = useOfflineEntity<TaskRecord & Record<string, any>>('task', {
+  taskableUuid: taskableUuidValue.value,
+  taskableType: 'planting'
+})
+const { getReference } = useReferenceData()
+
 const createDefaultForm = () => ({
   title: '',
   description: '',
@@ -263,10 +267,10 @@ const createDefaultForm = () => ({
   parent_task_id: ''
 })
 
-const tasks = ref<TaskRecord[]>([])
+const tasks = resource.items
 const farmUsers = ref<FarmUserRecord[]>([])
-const loading = ref(true)
-const loadError = ref<string | null>(null)
+const loading = resource.loading
+const loadError = resource.loadError
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
 const showAddTaskModal = ref(false)
@@ -365,43 +369,15 @@ const setValidationErrors = (errors: Record<string, string[] | string> | undefin
 
 const fetchFarmUsers = async () => {
   try {
-    if (!isOnline.value) {
-      farmUsers.value = []
-      return
-    }
-
-    await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data?: FarmUserRecord[] }>('/api/v1/farms/farm/users/list')
-    farmUsers.value = response.data ?? []
+    const { data } = await getReference<FarmUserRecord>('farm_users')
+    farmUsers.value = data
   } catch (err) {
     console.error('Failed to fetch farm users for tasks:', err)
     farmUsers.value = []
   }
 }
 
-const fetchTasks = async () => {
-  loading.value = true
-  loadError.value = null
-
-  try {
-    if (!isOnline.value) {
-      tasks.value = []
-      return
-    }
-
-    await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data?: TaskRecord[] }>(`/api/v1/tasks/list/${taskableUuidValue.value}`, {
-      params: { taskable_type: 'planting' }
-    })
-    tasks.value = response.data ?? []
-  } catch (err: unknown) {
-    loadError.value = err instanceof Error ? err.message : 'An error occurred while loading tasks'
-    console.error('Failed to fetch tasks:', err)
-    tasks.value = []
-  } finally {
-    loading.value = false
-  }
-}
+const fetchTasks = () => resource.fetch()
 
 const saveTask = async () => {
   if (!taskableUuidValue.value) return
@@ -411,35 +387,34 @@ const saveTask = async () => {
   formErrors.value = {}
   errorList.value = []
 
+  const assignedTo = toNumberOrNull(taskForm.value.assigned_to_user_id)
   const payload = {
     title: taskForm.value.title || null,
     description: taskForm.value.description || null,
     priority: Number(taskForm.value.priority),
     task_status: Number(taskForm.value.task_status),
     due_date: taskForm.value.due_date || null,
-    assigned_to_user_id: toNumberOrNull(taskForm.value.assigned_to_user_id),
+    assigned_to_user_id: assignedTo,
     parent_task_id: toNumberOrNull(taskForm.value.parent_task_id),
     taskable_type: 'planting',
     taskable_uuid: taskableUuidValue.value
   }
 
   try {
-    await $apiFetch('/sanctum/csrf-cookie')
-    await $apiFetch('/api/v1/tasks', {
-      method: 'POST',
-      body: payload
+    const result = await resource.create(payload, {
+      ...payload,
+      assignee: farmUsers.value.find(u => Number(u.id) === assignedTo) ?? null
     })
+    if (!result.ok) {
+      setValidationErrors(result.errors)
+      submitError.value = result.message || 'Failed to save task'
+      return
+    }
 
-    await fetchTasks()
     resetForm()
     closeTaskModal()
   } catch (err: unknown) {
-    const responseData = typeof err === 'object' && err !== null && 'data' in err
-      ? (err as { data?: { message?: string; errors?: Record<string, string[] | string> } }).data
-      : undefined
-
-    setValidationErrors(responseData?.errors)
-    submitError.value = responseData?.message ?? (err instanceof Error ? err.message : 'Failed to save task')
+    submitError.value = err instanceof Error ? err.message : 'Failed to save task'
     console.error('Failed to save task:', err)
   } finally {
     submitting.value = false

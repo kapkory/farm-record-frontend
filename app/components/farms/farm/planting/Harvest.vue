@@ -190,11 +190,13 @@ const props = withDefaults(defineProps<{
   plantingUuid: ''
 })
 
-const { $apiFetch } = useNuxtApp()
-const { isOnline } = useOffline()
 const route = useRoute()
 
 const plantingUuidValue = computed(() => props.plantingUuid || String(route.params.uuid || ''))
+const resource = useOfflineEntity<HarvestRecord & Record<string, any>>('production', {
+  model: 'planting',
+  parentUuid: plantingUuidValue.value
+})
 const defaultHarvestName = computed(() => props.cropName?.trim() || 'Harvest')
 
 const today = () => new Date().toISOString().split('T')[0] || ''
@@ -211,9 +213,9 @@ const createDefaultForm = () => ({
   expense_amount: ''
 })
 
-const harvests = ref<HarvestRecord[]>([])
-const loading = ref(true)
-const loadError = ref<string | null>(null)
+const harvests = computed(() => resource.items.value.filter(belongsToCurrentPlanting))
+const loading = resource.loading
+const loadError = resource.loadError
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
 const showAddHarvestModal = ref(false)
@@ -276,28 +278,7 @@ const setValidationErrors = (errors: Record<string, string[] | string> | undefin
   errorList.value = [...new Set(list)]
 }
 
-const fetchHarvests = async () => {
-  loading.value = true
-  loadError.value = null
-
-  try {
-    if (!isOnline.value) {
-      harvests.value = []
-      return
-    }
-
-    await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data?: HarvestRecord[] }>(`/api/v1/farms/farm/productions/list/${plantingUuidValue.value}`)
-    const records = response.data ?? []
-    harvests.value = records.filter(belongsToCurrentPlanting)
-  } catch (err: unknown) {
-    loadError.value = err instanceof Error ? err.message : 'An error occurred while loading harvest records'
-    console.error('Failed to fetch harvest records:', err)
-    harvests.value = []
-  } finally {
-    loading.value = false
-  }
-}
+const fetchHarvests = () => resource.fetch()
 
 const saveHarvest = async () => {
   if (!plantingUuidValue.value) return
@@ -329,22 +310,17 @@ const saveHarvest = async () => {
   }
 
   try {
-    await $apiFetch('/sanctum/csrf-cookie')
-    await $apiFetch('/api/v1/farms/farm/productions/store', {
-      method: 'POST',
-      body: payload
-    })
+    const result = await resource.create(payload)
+    if (!result.ok) {
+      setValidationErrors(result.errors)
+      submitError.value = result.message || 'Failed to save harvest record'
+      return
+    }
 
-    await fetchHarvests()
     resetForm()
     closeHarvestModal()
   } catch (err: unknown) {
-    const responseData = typeof err === 'object' && err !== null && 'data' in err
-      ? (err as { data?: { message?: string; errors?: Record<string, string[] | string> } }).data
-      : undefined
-
-    setValidationErrors(responseData?.errors)
-    submitError.value = responseData?.message ?? (err instanceof Error ? err.message : 'Failed to save harvest record')
+    submitError.value = err instanceof Error ? err.message : 'Failed to save harvest record'
     console.error('Failed to save harvest record:', err)
   } finally {
     submitting.value = false

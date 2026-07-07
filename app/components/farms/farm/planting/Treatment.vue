@@ -208,12 +208,16 @@ const props = withDefaults(defineProps<{
   plantingUuid: ''
 })
 
-const { $apiFetch } = useNuxtApp()
-const { isOnline } = useOffline()
 const route = useRoute()
 
 const plantingUuidValue = computed(() => props.plantingUuid || String(route.params.uuid || ''))
 const farmIdValue = computed(() => props.farmId || '')
+
+const resource = useOfflineEntity<TreatmentRecord & Record<string, any>>('treatment', {
+  model: 'planting',
+  parentUuid: plantingUuidValue.value
+})
+const { getReference } = useReferenceData()
 
 const today = () => new Date().toISOString().split('T')[0] || ''
 
@@ -231,9 +235,11 @@ const createDefaultForm = () => ({
 })
 
 const treatmentTypes = ref<TreatmentTypeOption[]>([])
-const treatments = ref<TreatmentRecord[]>([])
-const loading = ref(true)
-const loadError = ref<string | null>(null)
+const treatments = computed(() =>
+  resource.items.value.map(record => ({ ...record, treatment_type_name: mapTypeName(record) }))
+)
+const loading = resource.loading
+const loadError = resource.loadError
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
 const showAddTreatmentModal = ref(false)
@@ -343,14 +349,10 @@ const setValidationErrors = (errors: Record<string, string[] | string> | undefin
 
 const fetchTreatmentTypes = async () => {
   try {
-    if (!isOnline.value) {
-      treatmentTypes.value = []
-      return
-    }
-
-    await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data?: TreatmentTypeOption[] }>('/api/v1/settings/crops/treatment-types/list')
-    treatmentTypes.value = (response.data ?? []).map((type) => ({
+    const { data } = await getReference<TreatmentTypeOption>('treatment_types_crop', {
+      url: '/api/v1/settings/crops/treatment-types/list'
+    })
+    treatmentTypes.value = data.map((type) => ({
       ...type,
       status: normalizeStatus(type.status)
     }))
@@ -360,31 +362,7 @@ const fetchTreatmentTypes = async () => {
   }
 }
 
-const fetchTreatments = async () => {
-  loading.value = true
-  loadError.value = null
-
-  try {
-    if (!isOnline.value) {
-      treatments.value = []
-      return
-    }
-
-    await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data?: TreatmentRecord[] }>(`/api/v1/farms/farm/crops/treatments/list/${plantingUuidValue.value}`)
-    const records = response.data ?? []
-    treatments.value = records.map(record => ({
-      ...record,
-      treatment_type_name: mapTypeName(record)
-    }))
-  } catch (err: unknown) {
-    loadError.value = err instanceof Error ? err.message : 'An error occurred while loading treatments'
-    console.error('Failed to fetch treatments:', err)
-    treatments.value = []
-  } finally {
-    loading.value = false
-  }
-}
+const fetchTreatments = () => resource.fetch()
 
 const saveTreatment = async () => {
   if (!plantingUuidValue.value) return
@@ -415,22 +393,20 @@ const saveTreatment = async () => {
   }
 
   try {
-    await $apiFetch('/sanctum/csrf-cookie')
-    await $apiFetch('/api/v1/farms/farm/crops/treatments/', {
-      method: 'POST',
-      body: payload
+    const result = await resource.create(payload, {
+      ...payload,
+      treatment_type_name: selectedTreatmentType.value?.name ?? null
     })
+    if (!result.ok) {
+      setValidationErrors(result.errors)
+      submitError.value = result.message || 'Failed to save treatment record'
+      return
+    }
 
-    await fetchTreatments()
     resetForm()
     closeTreatmentModal()
   } catch (err: unknown) {
-    const responseData = typeof err === 'object' && err !== null && 'data' in err
-      ? (err as { data?: { message?: string; errors?: Record<string, string[] | string> } }).data
-      : undefined
-
-    setValidationErrors(responseData?.errors)
-    submitError.value = responseData?.message ?? (err instanceof Error ? err.message : 'Failed to save treatment record')
+    submitError.value = err instanceof Error ? err.message : 'Failed to save treatment record'
     console.error('Failed to save treatment record:', err)
   } finally {
     submitting.value = false

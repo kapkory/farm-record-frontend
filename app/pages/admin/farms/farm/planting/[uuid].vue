@@ -475,8 +475,7 @@ type LedgerFormErrorKey =
 
 type LedgerValidationErrors = Partial<Record<LedgerFormErrorKey, string>>
 
-const { $apiFetch } = useNuxtApp()
-const { isOnline } = useOffline()
+const { getReference } = useReferenceData()
 const route = useRoute()
 const router = useRouter()
 
@@ -535,6 +534,12 @@ const ledgerTypeConfig = (type: LedgerType) => {
   return config ?? ledgerTypeOptions[1]!
 }
 
+const plantingResource = useOfflineEntity<Planting & Record<string, any>>('planting')
+const transactionResource = useOfflineEntity<LedgerTransactionListItem & Record<string, any>>('transaction', {
+  model: 'planting',
+  parentUuid: route.params.uuid as string
+})
+
 const planting = ref<Planting | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -545,7 +550,9 @@ const ledgerSubmitError = ref<string | null>(null)
 const ledgerFormErrors = ref<LedgerValidationErrors>({})
 const ledgerErrorList = ref<string[]>([])
 const ledgerAccounts = ref<LedgerAccount[]>([])
-const ledgerTransactions = ref<LedgerTransactionRow[]>([])
+const ledgerTransactions = computed<LedgerTransactionRow[]>(() =>
+  transactionResource.items.value.flatMap(mapTransactionToRow)
+)
 const ledgerAccountSearch = ref('')
 const showLedgerAccountResults = ref(false)
 
@@ -869,25 +876,34 @@ const submitLedgerTransaction = async () => {
   }
 
   try {
-    await $apiFetch('/sanctum/csrf-cookie')
-    await $apiFetch<{ data?: { id?: number | string } }>(
-      '/api/v1/farms/farm/transactions',
-      {
-        method: 'POST',
-        body: payload
-      }
+    const selectedAccount = ledgerAccounts.value.find(
+      account => String(account.id) === ledgerForm.value.ledger_account_id
     )
+    const display = {
+      ...payload,
+      ledger_entries: [
+        {
+          ledger_account_id: payload.entries[0]?.ledger_account_id,
+          amount,
+          quantity,
+          unit_cost: unitCost,
+          ledger_account: selectedAccount
+            ? { name: selectedAccount.name, type: selectedAccount.type }
+            : null
+        }
+      ]
+    }
 
-    await fetchLedgerTransactions()
+    const result = await transactionResource.create(payload, display as Record<string, any>)
+    if (!result.ok) {
+      setLedgerValidationErrors(result.errors)
+      ledgerSubmitError.value = result.message || 'Failed to save transaction'
+      return
+    }
 
     closeLedgerModal()
   } catch (err: unknown) {
-    const responseData = typeof err === 'object' && err !== null && 'data' in err
-      ? (err as { data?: { message?: string; errors?: Record<string, string[] | string> } }).data
-      : undefined
-
-    setLedgerValidationErrors(responseData?.errors)
-    ledgerSubmitError.value = responseData?.message ?? (err instanceof Error ? err.message : 'Failed to save transaction')
+    ledgerSubmitError.value = err instanceof Error ? err.message : 'Failed to save transaction'
     console.error('Failed to save ledger transaction:', err)
   } finally {
     ledgerSubmitting.value = false
@@ -896,50 +912,26 @@ const submitLedgerTransaction = async () => {
 
 const fetchLedgerAccounts = async () => {
   try {
-    if (!isOnline.value) {
-      ledgerAccounts.value = []
-      return
-    }
-
-    await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data: LedgerAccount[] }>('/api/v1/settings/system/ledgeraccounts/list')
-    ledgerAccounts.value = response.data ?? []
+    const { data } = await getReference<LedgerAccount>('ledger_accounts')
+    ledgerAccounts.value = data
   } catch (err) {
     console.error('Failed to fetch ledger accounts:', err)
     ledgerAccounts.value = []
   }
 }
 
-const fetchLedgerTransactions = async () => {
-  try {
-    if (!isOnline.value) {
-      ledgerTransactions.value = []
-      return
-    }
-
-    await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data?: LedgerTransactionListItem[] }>('/api/v1/farms/farm/transactions/list/planting/' + plantingUuid.value)
-    const records = response.data ?? []
-
-    ledgerTransactions.value = records
-      .filter((transaction) => transaction.transaction_for === 'planting' && transaction.transaction_uuid === plantingUuid.value)
-      .flatMap(mapTransactionToRow)
-  } catch (err) {
-    console.error('Failed to fetch ledger transactions:', err)
-    ledgerTransactions.value = []
-  }
-}
+const fetchLedgerTransactions = () => transactionResource.fetch()
 
 const fetchPlanting = async () => {
   loading.value = true
   error.value = null
 
   try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: Planting }>(`/api/v1/farms/farm/planting/${plantingUuid.value}`)
-      planting.value = response.data
+    const record = await plantingResource.find(plantingUuid.value)
+    if (!record) {
+      error.value = 'Planting not found'
     }
+    planting.value = record
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'An error occurred while loading this planting'
     console.error('Failed to fetch planting:', err)

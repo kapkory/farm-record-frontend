@@ -137,13 +137,12 @@ interface Planting {
   farmer?: string
 }
 
-const { $apiFetch } = useNuxtApp()
-const { isOnline } = useOffline()
+const resource = useOfflineEntity<Planting & { uuid?: string }>('planting')
 const router = useRouter()
 
-const plantings = ref<Planting[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
+const plantings = resource.items
+const loading = resource.loading
+const error = resource.loadError
 const search = ref('')
 
 const filteredPlantings = computed(() => {
@@ -182,26 +181,7 @@ const openPlanting = (uuid?: string) => {
   router.push(`/admin/farms/farm/planting/${uuid}`)
 }
 
-const fetchPlantings = async () => {
-  loading.value = true
-  error.value = null
-
-  try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: Planting[] }>('/api/v1/farms/farm/plantings/list')
-      plantings.value = response.data ?? (response as unknown as Planting[])
-    } else {
-      plantings.value = []
-    }
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'An error occurred while loading plantings'
-    console.error('Failed to fetch plantings:', err)
-    plantings.value = []
-  } finally {
-    loading.value = false
-  }
-}
+const fetchPlantings = () => resource.fetch()
 
 onMounted(() => {
   fetchPlantings()

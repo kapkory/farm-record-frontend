@@ -326,8 +326,8 @@ interface PlantingSchedule {
   activities: ScheduleActivity[]
 }
 
-const { $apiFetch } = useNuxtApp()
-const { isOnline } = useOffline()
+const { getReference } = useReferenceData()
+const plantingResource = useOfflineEntity<Record<string, any>>('planting')
 const router = useRouter()
 
 // Data lists
@@ -393,11 +393,10 @@ const onFarmChange = async () => {
 
   fieldsLoading.value = true
   try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: Field[] }>(`/api/v1/farms/fields/list/${form.value.farm_uuid}`)
-      fields.value = response.data ?? (response as unknown as Field[])
-    }
+    const { data } = await getReference<Field>(`fields_${form.value.farm_uuid}`, {
+      url: `/api/v1/farms/fields/list/${form.value.farm_uuid}`
+    })
+    fields.value = data
   } catch (err) {
     console.error('Failed to fetch fields:', err)
   } finally {
@@ -415,11 +414,8 @@ const onCropChange = () => {
 const fetchFarms = async () => {
   farmsLoading.value = true
   try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
-      const response = await $apiFetch<{ data: Farm[] }>('/api/v1/farms')
-      farms.value = response.data ?? (response as unknown as Farm[])
-    }
+    const { data } = await getReference<Farm>('farms_list')
+    farms.value = data
   } catch (err) {
     console.error('Failed to fetch farms:', err)
   } finally {
@@ -431,15 +427,12 @@ const fetchFarms = async () => {
 const fetchCropsAndVarieties = async () => {
   cropsLoading.value = true
   try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
-      const [cropsRes, varietiesRes] = await Promise.all([
-        $apiFetch<{ data: Crop[] }>('/api/v1/settings/crops/list'),
-        $apiFetch<{ data: CropVariety[] }>('/api/v1/settings/crops/varieties/list')
-      ])
-      crops.value = cropsRes.data ?? (cropsRes as unknown as Crop[])
-      varieties.value = varietiesRes.data ?? (varietiesRes as unknown as CropVariety[])
-    }
+    const [cropsRes, varietiesRes] = await Promise.all([
+      getReference<Crop>('crops'),
+      getReference<CropVariety>('crop_varieties')
+    ])
+    crops.value = cropsRes.data
+    varieties.value = varietiesRes.data
   } catch (err) {
     console.error('Failed to fetch crops/varieties:', err)
   } finally {
@@ -464,10 +457,6 @@ const handleSubmit = async () => {
   submitting.value = true
 
   try {
-    if (isOnline.value) {
-      await $apiFetch('/sanctum/csrf-cookie')
-    }
-
     const payload = {
       farm_uuid: form.value.farm_uuid,
       field_uuid: form.value.field_uuid,
@@ -480,19 +469,25 @@ const handleSubmit = async () => {
       planting_schedule_uuid: form.value.planting_schedule_uuid || null
     }
 
-    if (isOnline.value) {
-      const response = await $apiFetch<{ data?: { uuid?: string } }>('/api/v1/farms/farm/plantings', {
-        method: 'POST',
-        body: payload
-      })
-      const uuid = response?.data?.uuid
-      if (uuid) {
-        await router.push(`/admin/farms/farm/planting/${uuid}`)
-        return
-      }
+    const result = await plantingResource.create(payload, {
+      ...payload,
+      crop: crops.value.find(c => c.id === Number(form.value.crop_id))?.name ?? null,
+      variety: varieties.value.find(v => v.id === Number(form.value.variety_id))?.name ?? null,
+      field: fields.value.find(f => f.uuid === form.value.field_uuid)?.name ?? null
+    })
+    if (!result.ok) {
+      generalError.value = result.message || 'Failed to save planting'
+      return
     }
 
-    successMessage.value = 'Planting saved successfully!'
+    if (result.synced && result.record.uuid) {
+      await router.push(`/admin/farms/farm/planting/${result.record.uuid}`)
+      return
+    }
+
+    // Offline: schedule tasks and harvest dates are generated server-side,
+    // so the planting completes after sync — go back to the list for now.
+    successMessage.value = 'Planting saved locally — it will finish setting up after sync.'
     await router.push('/admin/crops/plantings')
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'An error occurred while saving the planting'
@@ -506,11 +501,8 @@ const handleSubmit = async () => {
 const fetchSchedules = async () => {
   schedulesLoading.value = true
   try {
-    if (isOnline.value) {
-      const response = await $apiFetch<{ data: PlantingSchedule[] }>('/api/v1/settings/crops/schedules/list')
-      console.log('Fetched planting schedules:', response.data)
-      plantingSchedules.value = response.data ?? (response as unknown as PlantingSchedule[])
-    }
+    const { data } = await getReference<PlantingSchedule>('planting_schedules')
+    plantingSchedules.value = data
   } catch (err) {
     console.error('Failed to fetch planting schedules:', err)
   } finally {
