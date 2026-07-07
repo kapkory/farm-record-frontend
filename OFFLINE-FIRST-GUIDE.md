@@ -1,287 +1,125 @@
 # Offline-First Implementation Guide
 
-This Nuxt 4 application is now configured as an offline-first Progressive Web App (PWA). Here's how it works and how to use it:
+Farmconsul is an offline-first PWA: every field-work mutation is written to
+IndexedDB and queued before the API is attempted, and reads fall back to
+IndexedDB (or a TTL cache) when offline. This guide describes the actual
+architecture — the generic entity layer added in DB schema **v3**.
 
-## Features
+## The three building blocks
 
-### 1. **Service Worker & Caching**
-- Automatic caching of static assets (JS, CSS, images)
-- API responses cached for offline access
-- Smart cache strategies:
-  - **CacheFirst**: Fonts, static assets (1 year)
-  - **NetworkFirst**: API calls, pages (24 hours)
-  - Network timeout fallback to cache
+### 1. Entity registry — `app/utils/offline/registry.ts`
 
-### 2. **IndexedDB Storage**
-The app uses IndexedDB for local data persistence:
+One config object mapping each offline-capable entity to its API endpoints
+and parent scoping. It is the single source of truth for both the sync
+engine and the composable factory. An entity that isn't in the registry
+cannot be queued or synced.
 
-**Stores:**
-- `farms` - Farm data with sync status
-- `syncQueue` - Pending changes to sync when online
-- `cache` - General purpose cache with TTL
-
-**Location:** `/utils/db.ts`
-
-### 3. **Offline Detection**
-Real-time network status monitoring with automatic sync when back online.
-
-**Composable:** `useOffline()`
 ```ts
-const { 
-  isOnline,           // Current network status
-  lastOnline,         // Last time online
-  pendingSyncCount,   // Number of pending syncs
-  triggerSync         // Manual sync trigger
-} = useOffline()
-```
-
-### 4. **Offline Data Operations**
-All CRUD operations work offline and sync automatically.
-
-**Composable:** `useOfflineData()`
-```ts
-const { 
-  saveFarm,      // Create/update farm (works offline)
-  getFarms,      // Get all farms (local-first)
-  deleteFarm,    // Delete farm (queued for sync)
-  cacheData,     // Cache any data with TTL
-  getCachedData  // Retrieve cached data
-} = useOfflineData()
-```
-
-### 5. **Visual Indicators**
-- **Yellow banner**: Offline mode (shows pending sync count)
-- **Green banner**: Back online (sync successful)
-- Auto-hides after 3 seconds
-
-## How to Use
-
-### Basic Usage
-
-1. **Save Data Offline:**
-```ts
-const { saveFarm } = useOfflineData()
-
-// Works whether online or offline
-await saveFarm({
-  name: 'Green Valley Farm',
-  location: 'California',
-  size: '100 acres',
-  type: 'Organic',
-  owner: 'John Doe',
-  status: 'active'
-})
-```
-
-2. **Fetch Data:**
-```ts
-const { getFarms } = useOfflineData()
-
-// Always returns data (from cache if offline)
-const farms = await getFarms()
-```
-
-3. **Delete Data:**
-```ts
-const { deleteFarm } = useOfflineData()
-
-// Queued for sync if offline
-await deleteFarm('farm-id-123')
-```
-
-### Advanced Usage
-
-**Manual Sync:**
-```ts
-const { triggerSync } = useOffline()
-
-// Force sync pending changes
-triggerSync()
-```
-
-**Cache with TTL:**
-```ts
-const { cacheData, getCachedData } = useOfflineData()
-
-// Cache for 1 hour
-await cacheData('dashboard-stats', statsData, 3600)
-
-// Retrieve cached data
-const stats = await getCachedData('dashboard-stats')
-```
-
-**Check Sync Status:**
-```ts
-const { pendingSyncCount, updatePendingCount } = useOffline()
-
-await updatePendingCount()
-console.log(`${pendingSyncCount.value} items pending sync`)
-```
-
-## Installation
-
-The PWA is already configured. To install as an app:
-
-1. Open the app in Chrome/Edge
-2. Click the install icon in the address bar
-3. Or: Settings menu → "Install FarmManage..."
-
-## PWA Configuration
-
-**File:** `nuxt.config.ts`
-
-Key settings:
-- Auto-update service worker
-- Manifest with green theme (#10B981)
-- Workbox caching strategies
-- Dev mode enabled for testing
-
-## Testing Offline Mode
-
-### In Browser (Chrome DevTools):
-
-1. Open DevTools (F12)
-2. Go to **Network** tab
-3. Change throttling to **Offline**
-4. Try creating/editing farms
-5. Go back **Online** - watch auto-sync
-
-### In Browser (Application tab):
-
-1. Open DevTools → **Application** tab
-2. Check **Service Workers** - should see active worker
-3. Check **IndexedDB** - see FarmManageDB with stores
-4. Check **Cache Storage** - see cached assets
-
-## File Structure
-
-```
-frontend/
-├── nuxt.config.ts              # PWA configuration
-├── utils/
-│   └── db.ts                   # IndexedDB wrapper
-├── composables/
-│   ├── useOffline.ts           # Network detection & sync
-│   └── useOfflineData.ts       # Offline data operations
-├── components/
-│   └── OfflineIndicator.vue    # Visual offline indicator
-└── public/
-    ├── icon-192x192.png        # PWA icon (small)
-    ├── icon-512x512.png        # PWA icon (large)
-    ├── icon-maskable-192x192.png
-    └── icon-maskable-512x512.png
-```
-
-## Customization
-
-### Add New Entity Types
-
-1. Add type to `db.ts`:
-```ts
-export interface Crop {
-  id: string
-  name: string
-  // ... other fields
-  synced: boolean
+breeding: {
+  name: 'breeding',
+  endpoints: {
+    list: ctx => `/api/v1/farms/farm/animals/breedings/list/${ctx.animalUuid}`,
+    create: () => '/api/v1/farms/farm/animals/breedings',
+    update: uuid => `/api/v1/farms/farm/animals/breedings/${uuid}`
+  },
+  parentOf: ctx => ctx.animalUuid ?? null   // used for offline list queries
 }
 ```
 
-2. Add object store in `init()`:
-```ts
-if (!db.objectStoreNames.contains('crops')) {
-  const cropStore = db.createObjectStore('crops', { keyPath: 'id' })
-  cropStore.createIndex('name', 'name', { unique: false })
-}
-```
+Polymorphic entities (task, treatment, transaction, production) pass their
+morph alias (`planting` | `animal` | `animal_group`) and parent uuid through
+`ctx`. Those alias strings must match the backend `Relation::morphMap`.
 
-3. Add CRUD methods to `db.ts`
+### 2. Generic factory — `app/composables/useOfflineEntity.ts`
 
-4. Add entity operations to `useOfflineData()`
+`useOfflineEntity<T>(entity, ctx)` returns `{ items, loading, fetch, find,
+create, update, remove }`:
 
-### Connect to Real API
+- **`fetch()`** — API-first list; caches each server record in IndexedDB
+  (`synced: true`) and overlays any local unsynced records so offline-created
+  rows don't vanish after a refetch. Offline/error → reads from IndexedDB.
+- **`create(payload, display?)`** — generates the uuid up front (the backend
+  stores client uuids as-is), writes the record locally, queues it, then
+  attempts an immediate sync when online. On a 422 it rolls the optimistic
+  record back and returns the field errors; on a network error it stays
+  queued. `display` optionally enriches the optimistic copy (resolved names
+  for foreign keys) shown until the server copy arrives.
+- **`update(uuid, patch)`** — coalesces into a pending create/update for the
+  same record when one exists.
+- **`remove(uuid)`** — deleting a record whose create is still queued cancels
+  both without touching the API.
 
-Replace the commented API calls in `useOfflineData.ts`:
+Per-entity composables stay thin — they own form/label state and delegate
+persistence here. See `useAnimalBreedings.ts` for the canonical example.
 
-```ts
-// Replace this:
-console.log('Farm saved online:', farmData)
+### 3. Sync engine — `app/composables/useOffline.ts`
 
-// With this:
-const response = await $fetch('/api/farms', {
-  method: 'POST',
-  body: farmData
-})
-```
+Module-scoped singleton state (`isOnline`, `pendingSyncCount`,
+`failedSyncCount`, `authRequired`) shared by every caller. The drain loop
+runs FIFO by timestamp behind an in-flight mutex; because client uuids are
+final, parents enqueued before children sync safely without a dependency
+graph. Error handling:
 
-### Modify Cache Strategy
+- **401 / 419** → pause the queue, set `authRequired`; a successful login
+  (`auth.ts` calls `notifyAuthenticated()`) resumes it.
+- **422 / 404** → mark the item `failed` and flag the local record; the user
+  can discard it from the indicator (never silently dropped).
+- **network / 5xx** → retry with an attempt cap (10) so a poison item can't
+  hot-loop.
 
-Edit `nuxt.config.ts` → `pwa.workbox.runtimeCaching`:
+Sync is triggered on the `online` event, app mount, login, and
+`visibilitychange → visible` (mobile PWA resume).
 
-```ts
-{
-  urlPattern: /\/api\/farms.*/,
-  handler: 'NetworkFirst',  // Change strategy
-  options: {
-    cacheName: 'farms-cache',
-    expiration: {
-      maxAgeSeconds: 60 * 60  // Change TTL
-    }
-  }
-}
-```
+## Reference data — `app/composables/useReferenceData.ts`
 
-## Sync Behavior
+Read-through TTL cache for dropdown/lookup lists (sires, assignees, treatment
+types, ledger accounts, crops, …). Online it fetches and caches; offline it
+returns the cached copy with `stale: true`. Field forms depend on these
+lists, so they are cached during Phase-1 flows and reused by the settings
+screens.
 
-**Automatic Sync:**
-- Triggers when app goes from offline → online
-- Processes all items in sync queue
-- Retries failed syncs on next connection
-- Cleans up successfully synced items
+## IndexedDB — `app/utils/db.ts` (schema v3)
 
-**Sync Queue Priority:**
-- FIFO (First In, First Out)
-- Failed syncs remain in queue
-- Manual `triggerSync()` available
+One generic `records` store keyed by `${entity}:${uuid}`, with an `entity`
+index and a compound `['entity','parent']` index. Records hold the
+server-shaped payload verbatim in an envelope
+(`{ key, entity, uuid, parent, data, synced, syncError, savedAt }`), so
+adding a new entity never needs a schema bump — just a registry entry. The
+`syncQueue` and TTL `cache` stores round it out. The v3 upgrade migrates
+unsynced rows and queue items from the old per-entity stores.
 
-## Best Practices
+## Adding a new offline entity
 
-1. **Always use composables** for data operations
-2. **Check `isOnline`** before showing "sync now" buttons
-3. **Show `pendingSyncCount`** to users
-4. **Handle sync failures** gracefully
-5. **Test offline scenarios** thoroughly
-6. **Set appropriate cache TTLs** for your data
-7. **Clear old cache** periodically
+1. Add an entry to `entityRegistry` (endpoints + `parentOf`).
+2. If the backend create should be idempotent, accept a client `uuid` there
+   (see `app/Traits/ResolvesClientUuid.php` in the backend).
+3. In the composable/page, call `useOfflineEntity<T>('yourEntity', ctx)` and
+   use its `fetch`/`create`/`update`/`remove`.
 
-## Troubleshooting
+No `db.ts` or `useOffline.ts` changes required.
 
-**Service worker not updating?**
-- Hard refresh (Ctrl+Shift+R / Cmd+Shift+R)
-- Clear site data in DevTools
-- Check console for service worker errors
+## Testing offline behaviour
 
-**Data not syncing?**
-- Check browser console for errors
-- Verify `syncQueue` in IndexedDB
-- Call `updatePendingCount()` to refresh count
+Chrome DevTools → Network → **Offline** (run against a local Laravel):
 
-**PWA not installing?**
-- Ensure you're on HTTPS (or localhost)
-- Check manifest.json is generated
-- Icons must be correct format/size
+1. Browse online to fill caches, go offline, create records → they appear
+   with a pending badge and `pendingSyncCount` increments; reload offline →
+   they persist.
+2. Create a parent (e.g. animal) offline, then a child (health record) → both
+   queue FIFO. Go online → they sync in order carrying their client uuids.
+3. Toggle offline mid-drain then reconnect → **no duplicates** (idempotent
+   replay).
+4. A server-invalid record lands in the "failed" state, discardable from the
+   indicator.
+5. Expired session → sync halts with "log in to sync"; logging in resumes it.
 
-## Next Steps
+Note: the service worker's NetworkFirst cache for `/api/**` can serve a stale
+200 while "offline", masking the IndexedDB fallback — test with DevTools
+"Bypass for network" both on and off.
 
-1. **Connect real API endpoints** in sync logic
-2. **Add authentication** token handling for offline
-3. **Implement conflict resolution** for concurrent edits
-4. **Add background sync** for better reliability
-5. **Create admin dashboard** for sync monitoring
-6. **Add push notifications** for sync status
+## PWA configuration — `nuxt.config.ts`
 
-## Resources
-
-- [Vite PWA Plugin](https://vite-pwa-org.netlify.app/)
-- [Workbox Strategies](https://developer.chrome.com/docs/workbox/modules/workbox-strategies/)
-- [IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
-- [PWA Best Practices](https://web.dev/pwa-checklist/)
+`@vite-pwa/nuxt`, `generateSW`, auto-update. Runtime caching: NetworkFirst
+for pages and `/api/**` (24h, 10s network timeout), CacheFirst for images.
+`navigateFallback: null` — Nginx handles SPA routing. Enabled in dev for
+testing.

@@ -477,10 +477,14 @@ const editFarm = (id: string) => {
   // navigateTo(`/admin/farms/${id}/edit`)
 }
 
-const deleteFarm = (id: string) => {
-  if (confirm('Are you sure you want to delete this farm?')) {
-    console.log('Delete farm:', id)
-    // Handle delete logic
+const deleteFarm = async (id: string) => {
+  if (!confirm('Are you sure you want to delete this farm?')) return
+  try {
+    await farmResource.remove(id)
+    farms.value = farms.value.filter(f => f.id !== id)
+  } catch (err) {
+    console.error('Failed to delete farm:', err)
+    alert('Failed to delete farm')
   }
 }
 

@@ -173,7 +173,7 @@ interface UserRecord {
 }
 
 const { $apiFetch } = useNuxtApp()
-const { isOnline } = useOffline()
+const { getReference } = useReferenceData()
 
 const userRoleOptions: UserRole[] = ['owner', 'manager', 'staff']
 
@@ -272,14 +272,8 @@ const fetchUsers = async () => {
   error.value = null
 
   try {
-    if (!isOnline.value) {
-      users.value = []
-      return
-    }
-
-    await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data?: UserRecord[] }>('/api/v1/farms/farm/users/list')
-    users.value = response.data ?? []
+    const { data } = await getReference<UserRecord>('farm_users')
+    users.value = data
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'An error occurred while loading farm users'
     console.error('Failed to fetch users:', err)

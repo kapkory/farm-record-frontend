@@ -185,7 +185,7 @@ interface PersonnelRecord {
 }
 
 const { $apiFetch } = useNuxtApp()
-const { isOnline } = useOffline()
+const { getReference } = useReferenceData()
 
 const personnelRoleOptions: PersonnelRole[] = ['casual', 'veterinary', 'worker', 'manager']
 
@@ -287,14 +287,8 @@ const fetchPersonnels = async () => {
   error.value = null
 
   try {
-    if (!isOnline.value) {
-      personnels.value = []
-      return
-    }
-
-    await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data?: PersonnelRecord[] }>('/api/v1/farms/farm/users/personnels/list')
-    personnels.value = response.data ?? []
+    const { data } = await getReference<PersonnelRecord>('personnels')
+    personnels.value = data
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'An error occurred while loading personnels'
     console.error('Failed to fetch personnels:', err)

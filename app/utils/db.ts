@@ -44,50 +44,6 @@ export interface SyncQueueItem {
   lastError?: string
 }
 
-/** @deprecated v2 queue shape, still accepted by addToSyncQueue for old callers */
-export interface SyncQueue {
-  id: string
-  action: SyncAction
-  entity: string
-  data: any
-  timestamp: number
-  synced: boolean
-}
-
-/** @deprecated v2 local shape — new code stores server-shaped records */
-export interface Farm {
-  id: string
-  name: string
-  location: string
-  size: string
-  type: string
-  owner: string
-  status: string
-  createdAt: string
-  updatedAt: string
-  synced: boolean
-}
-
-/** @deprecated v2 local shape — new code stores server-shaped records */
-export interface Breeding {
-  id: string
-  animal_uuid: string
-  farm_id: number | string | null
-  dam_id: number | string | null
-  sire_id: number | string | null
-  sire_type: 'natural' | 'ai' | 'embryo'
-  service_date: string
-  expected_birth_date: string | null
-  status: 'pending' | 'born' | 'aborted' | 'failed'
-  ai_straw_code: string | null
-  ai_bull_name: string | null
-  ai_technician: string | null
-  notes: string | null
-  synced: boolean
-  createdAt: string
-  updatedAt: string
-}
-
 const recordKey = (entity: string, uuid: string) => `${entity}:${uuid}`
 
 /** Best-effort translation of a v2 queue item into the v3 shape. */
@@ -316,83 +272,6 @@ class FarmManageDB {
     const store = await this.tx('syncQueue', 'readwrite')
     store.delete(id)
     return this.complete(store)
-  }
-
-  // ── Legacy sync-queue API (used by pre-v3 composables) ─────────────────
-
-  /** @deprecated enqueue() with the v3 item shape instead */
-  async addToSyncQueue(item: SyncQueue): Promise<void> {
-    return this.enqueue(upgradeQueueItem(item))
-  }
-
-  /** @deprecated getPending() instead */
-  async getSyncQueue(): Promise<SyncQueueItem[]> {
-    return this.getPending()
-  }
-
-  /** @deprecated deleteQueueItem() — the v3 queue drops items once synced */
-  async markSynced(id: string): Promise<void> {
-    return this.deleteQueueItem(id)
-  }
-
-  /** @deprecated no-op in v3; synced items are deleted immediately */
-  async clearSyncedItems(): Promise<void> {}
-
-  // ── Legacy entity API (used by pre-v3 composables; delegates to records) ──
-
-  /** @deprecated putRecord('farm', …) instead */
-  async addFarm(farm: Farm): Promise<void> {
-    return this.putRecord('farm', farm.id, null, farm, farm.synced)
-  }
-
-  /** @deprecated getRecord('farm', …) instead */
-  async getFarm(id: string): Promise<Farm | undefined> {
-    return (await this.getRecord<Farm>('farm', id))?.data
-  }
-
-  /** @deprecated listRecords('farm') instead */
-  async getAllFarms(): Promise<Farm[]> {
-    return (await this.listRecords<Farm>('farm')).map(r => r.data)
-  }
-
-  /** @deprecated putRecord('farm', …) instead */
-  async updateFarm(farm: Farm): Promise<void> {
-    return this.addFarm({ ...farm, synced: false, updatedAt: new Date().toISOString() })
-  }
-
-  /** @deprecated deleteRecord('farm', …) instead */
-  async deleteFarm(id: string): Promise<void> {
-    return this.deleteRecord('farm', id)
-  }
-
-  /** @deprecated putRecord('breeding', …) instead */
-  async addBreeding(breeding: Breeding): Promise<void> {
-    return this.putRecord('breeding', breeding.id, breeding.animal_uuid ?? null, breeding, breeding.synced)
-  }
-
-  /** @deprecated getRecord('breeding', …) instead */
-  async getBreeding(id: string): Promise<Breeding | undefined> {
-    return (await this.getRecord<Breeding>('breeding', id))?.data
-  }
-
-  /** @deprecated listRecords('breeding', animalUuid) instead */
-  async getBreedingsByAnimal(animalUuid: string): Promise<Breeding[]> {
-    return (await this.listRecords<Breeding>('breeding', animalUuid)).map(r => r.data)
-  }
-
-  /** @deprecated listRecords('breeding') instead */
-  async getAllBreedings(): Promise<Breeding[]> {
-    return (await this.listRecords<Breeding>('breeding')).map(r => r.data)
-  }
-
-  /** @deprecated putRecord('breeding', …) instead */
-  async updateBreeding(breeding: Breeding): Promise<void> {
-    return this.addBreeding({ ...breeding, synced: false, updatedAt: new Date().toISOString() })
-  }
-
-  /** @deprecated deleteRecord('breeding', …) instead */
-  async deleteBreeding(id: string): Promise<void> {
-    return this.deleteRecord('breeding', id)
   }
 
   // ── Cache (TTL) ────────────────────────────────────────────────────────

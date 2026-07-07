@@ -22,20 +22,20 @@ The backend base URL comes from `NUXT_PUBLIC_API_BASE` (defaults to `https://api
 ## Architecture
 
 ### Offline-first data flow
-Every mutation is **written to IndexedDB first**, queued for sync, then pushed to the API if online. The canonical, up-to-date pattern lives in `app/composables/useAnimalBreedings.ts` — read it before adding a new feature:
+Every mutation is **written to IndexedDB first**, queued for sync, then pushed to the API if online. This is handled by a **generic entity layer** — don't hand-roll it per feature:
 
-1. Build a payload and a local record (with `crypto.randomUUID()` as a temporary id).
-2. `db.add*()` the local record + `db.addToSyncQueue()` an item with `synced: false`.
-3. If `isOnline`, call `$apiFetch('/sanctum/csrf-cookie')` then the real endpoint. On success, swap the local id for the server `uuid`, mark synced; on 422 validation error, roll back the local record; on network error, leave it queued.
-4. Reads fetch from API when online (caching each record into IndexedDB) and **fall back to IndexedDB when offline or on error**.
+- **`app/utils/offline/registry.ts`** — the single source of truth mapping each entity to its API endpoints and parent scoping. Both the sync engine and the factory read from it; an entity missing here can't be synced. Polymorphic entities pass their morph alias (`planting`/`animal`/`animal_group`) + parent uuid via `ctx`.
+- **`app/composables/useOfflineEntity.ts`** — `useOfflineEntity<T>(entity, ctx)` returns `{ items, loading, fetch, find, create, update, remove }`. Local-first writes with a client-generated uuid (the backend stores it as-is — no id swap), immediate sync attempt when online, 422 rollback with field errors, queue coalescing. Reads are API-first with IndexedDB fallback, overlaying unsynced local rows.
+- Per-entity composables (e.g. `app/composables/useAnimalBreedings.ts`) own only form/label state and delegate persistence to the factory. **Mirror `useAnimalBreedings.ts` when adding a feature.**
+- **`app/composables/useReferenceData.ts`** — TTL read-through cache for dropdown/lookup lists (assignees, treatment types, ledger accounts, …) so forms work offline.
 
-`app/composables/useOfflineData.ts` is an **older, mostly stubbed** version of this pattern (the API calls are commented out and it only `console.log`s). Don't copy it — mirror `useAnimalBreedings.ts` instead.
+`OFFLINE-FIRST-GUIDE.md` has the full walkthrough.
 
 ### IndexedDB layer — `app/utils/db.ts`
-`FarmManageDB` class exported as singleton `db`. DB name `FarmManageDB`, current `DB_VERSION = 2`. Object stores: `farms`, `breedings`, `syncQueue`, `cache` (TTL-based). **Adding a store or index requires bumping `DB_VERSION` and extending `onupgradeneeded`.** Entity interfaces (`Farm`, `Breeding`, `SyncQueue`) live here; each entity carries a `synced: boolean` flag.
+`FarmManageDB` class exported as singleton `db`. DB name `FarmManageDB`, current `DB_VERSION = 3`. One generic **`records`** store keyed by `${entity}:${uuid}` (indexes `entity` and compound `['entity','parent']`) holds server-shaped payloads in an envelope with sync metadata — so **adding an entity needs only a registry entry, not a schema bump.** Plus `syncQueue` and a TTL `cache` store. Only bump `DB_VERSION` when changing the store/index shape itself.
 
 ### Sync engine — `app/composables/useOffline.ts`
-Owns network status (`isOnline`, `pendingSyncCount`, `triggerSync`) and the replay loop. When connectivity returns it drains `syncQueue`, routing each item through `getSyncEndpoint()` (an entity+action → `{url, method, body}` switch). **When you add a new syncable entity, you must add a case to `getSyncEndpoint()`** or its queued items are silently dropped (marked synced). 404/422 = unrecoverable (dropped); other errors stay queued for retry.
+Module-scoped singleton state (`isOnline`, `pendingSyncCount`, `failedSyncCount`, `authRequired`, `triggerSync`) and the replay loop. It drains `syncQueue` FIFO, building each request from the registry. **New syncable entities just need a registry entry** — no switch to edit. 401 pauses the queue until re-login; 422/404 mark the item `failed` and user-discardable (not silently dropped); network/5xx retry with an attempt cap.
 
 ### API client — `app/plugins/00.apiFetch.ts`
 Provides `nuxtApp.$apiFetch` (typed in `app.d.ts`). A `$fetch` instance with `credentials: 'include'`, `Accept: application/json`, and an `onRequest` hook that reads the `XSRF-TOKEN` cookie and sets `X-XSRF-TOKEN`. All non-local `http://` URLs are force-upgraded to `https://`. **Always `await $apiFetch('/sanctum/csrf-cookie')` before a state-changing request.**
@@ -64,5 +64,7 @@ Configured entirely in `nuxt.config.ts` under `pwa` (`@vite-pwa/nuxt`, `register
 - Server records use snake_case + `uuid`/`created_at`; local IndexedDB records use `id`/`createdAt` + `synced`. Map between them at the composable boundary (see `fetchBreedings`).
 
 ## Reference
-- `OFFLINE-FIRST-GUIDE.md` — deeper walkthrough of the offline/PWA design.
+- `OFFLINE-FIRST-GUIDE.md` — deeper walkthrough of the offline/PWA design (registry + factory + sync engine).
 - `.github/copilot-instructions.md` — overlapping guidance (note: partly stale, e.g. old API base and farm-only scope).
+
+Settings CRUD screens (`app/components/crops/*`, `app/components/animals/*Tab.vue`, ledger accounts) remain **online-only** by design; their reference lists are cached via `useReferenceData` and shown offline through the field forms that consume them.

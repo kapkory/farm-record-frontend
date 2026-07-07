@@ -326,7 +326,7 @@ definePageMeta({
   middleware: ['auth'],
 })
 
-const { $apiFetch } = useNuxtApp()
+const { getReference } = useReferenceData()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CalendarApiTask {
@@ -517,10 +517,16 @@ async function fetchCalendarTasks() {
   try {
     loadingCalendar.value = true
     calendarError.value = null
-    await $apiFetch('/sanctum/csrf-cookie')
-    const response = await $apiFetch<{ data: CalendarApiTask[] }>('/api/v1/tasks/calendar')
-    const tasks = Array.isArray(response) ? response : (response?.data ?? [])
-    allTasks.value = tasks
+    // Short TTL: the calendar changes often, but a cached copy keeps it
+    // visible offline.
+    const { data, stale } = await getReference<CalendarApiTask>('calendar_tasks', {
+      url: '/api/v1/tasks/calendar',
+      ttl: 60 * 60 * 1000
+    })
+    allTasks.value = data
+    if (stale && !data.length) {
+      calendarError.value = 'Unable to load calendar tasks right now.'
+    }
   } catch (error) {
     console.error('Failed to fetch calendar tasks', error)
     calendarError.value = 'Unable to load calendar tasks right now.'
