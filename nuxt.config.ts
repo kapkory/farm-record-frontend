@@ -2,7 +2,21 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  ssr: false,
+  // Hybrid rendering: public marketing/auth pages are prerendered to real HTML
+  // at build time (nuxt generate) so crawlers see content; the app itself
+  // stays a client-only SPA via the routeRules below.
+  ssr: true,
+  routeRules: {
+    '/': { prerender: true },
+    '/login': { prerender: true },
+    '/register': { prerender: true },
+    '/pricing': { prerender: true },
+    '/forgot-password': { prerender: true },
+    // Client-only: offline-first admin app and token-based auth flows.
+    '/admin/**': { ssr: false },
+    '/auth/**': { ssr: false },
+    '/password-reset/**': { ssr: false },
+  },
   modules: [
     '@nuxt/image',
     '@nuxt/scripts',
@@ -18,6 +32,9 @@ export default defineNuxtConfig({
       },
       title: 'Farmconsul — Smart Farm Management',
       meta: [
+        { name: 'description', content: 'Track crops, manage workers, record harvests and tasks — all from your phone. Works offline. Built for farmers across Africa.' },
+        { property: 'og:site_name', content: 'Farmconsul' },
+        { property: 'og:type', content: 'website' },
         { name: 'theme-color', content: '#10B981' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },

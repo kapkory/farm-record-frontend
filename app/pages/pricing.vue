@@ -12,7 +12,7 @@
               </svg>
             </div>
             <div>
-              <h1 class="text-xl font-bold text-gray-900">FarmManage Pro</h1>
+              <h1 class="text-xl font-bold text-gray-900">Farmconsul</h1>
             </div>
           </div>
           
@@ -478,7 +478,7 @@
           Ready to Transform Your Farm Management?
         </h2>
         <p class="text-xl text-green-50 mb-8">
-          Join thousands of farmers who are already using FarmManage Pro to optimize their operations.
+          Join thousands of farmers who are already using Farmconsul to optimize their operations.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
           <NuxtLink 
@@ -508,14 +508,14 @@
                       d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
               </svg>
             </div>
-            <span class="text-xl font-bold text-white">FarmManage Pro</span>
+            <span class="text-xl font-bold text-white">Farmconsul</span>
           </div>
           <p class="text-gray-400">
             Empowering farmers with smart technology
           </p>
         </div>
         <div class="border-t border-gray-800 pt-8">
-          <p>&copy; 2025 FarmManage Pro. All rights reserved.</p>
+          <p>&copy; 2025 Farmconsul. All rights reserved.</p>
         </div>
       </div>
     </footer>
@@ -528,11 +528,16 @@ import { ref } from 'vue'
 const isAnnual = ref(false)
 
 // SEO Meta
+useSeoMeta({
+  title: 'Pricing — Farmconsul',
+  description: 'Choose the perfect plan for your farm. Simple, transparent pricing with no hidden fees. All plans include a 14-day free trial.',
+  ogTitle: 'Pricing — Farmconsul',
+  ogDescription: 'Choose the perfect plan for your farm. Simple, transparent pricing with no hidden fees. All plans include a 14-day free trial.',
+  ogUrl: 'https://farmconsul.com/pricing',
+})
+
 useHead({
-  title: 'Pricing - FarmManage Pro',
-  meta: [
-    { name: 'description', content: 'Choose the perfect plan for your farm. Simple, transparent pricing with no hidden fees. All plans include a 14-day free trial.' }
-  ]
+  link: [{ rel: 'canonical', href: 'https://farmconsul.com/pricing' }],
 })
 </script>
 

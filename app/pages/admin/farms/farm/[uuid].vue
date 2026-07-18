@@ -180,8 +180,15 @@ onMounted(async () => {
   // not a plain record, so it is cached rather than kept in the entity store.
   try {
     const response = await $apiFetch<{ data?: FarmData }>(`/api/v1/farms/farm/${farmId}`)
-    farm.value = response.data ?? (response as unknown as FarmData)
-    await db.setCache(`farm_summary_${farmId}`, farm.value, 24 * 60 * 60 * 1000)
+    // Cache the raw response, not farm.value — reading back through the ref
+    // returns a reactive Proxy, which IndexedDB cannot structured-clone.
+    const data = response.data ?? (response as unknown as FarmData)
+    farm.value = data
+    try {
+      await db.setCache(`farm_summary_${farmId}`, data, 24 * 60 * 60 * 1000)
+    } catch (cacheErr) {
+      console.warn('Failed to cache farm summary:', cacheErr)
+    }
   } catch (err) {
     const cached = await db.getCache(`farm_summary_${farmId}`)
     if (cached) {

@@ -368,18 +368,32 @@ const dismissInstallBanner = () => {
   showInstallBanner.value = false
 }
 
-useHead({
+useSeoMeta({
   title: 'Farmconsul — Smart Farm Management for African Farmers',
+  description: 'Track crops, manage workers, record harvests and tasks — all from your phone. Works offline. Built for farmers across Africa.',
   ogTitle: 'Farmconsul — Smart Farm Management for African Farmers',
   ogDescription: 'Track crops, manage workers, record harvests and tasks — all from your phone. Works offline. Built for farmers across Africa.',
+  ogUrl: 'https://farmconsul.com/',
   ogImage: 'https://farmconsul.com/farmconsul_logo.png',
   twitterCard: 'summary_large_image',
-  meta: [
-    { name: 'description', content: 'Track crops, manage workers, record harvests and tasks — all from your phone. Works offline. Built for farmers across Africa.' },
-    { name: 'apple-mobile-web-app-capable', content: 'yes' },
-    { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
-    { name: 'apple-mobile-web-app-title', content: 'Farmconsul' }
-  ],
+})
 
+useHead({
+  link: [{ rel: 'canonical', href: 'https://farmconsul.com/' }],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'Farmconsul',
+        url: 'https://farmconsul.com/',
+        description: 'Offline-first farm management app: track crops, livestock, workers, harvests and inventory from your phone.',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web, Android, iOS',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      }),
+    },
+  ],
 })
 </script>

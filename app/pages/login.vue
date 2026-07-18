@@ -334,11 +334,16 @@ definePageMeta({
 })
 
 // SEO Meta
+useSeoMeta({
+  title: 'Login — Farmconsul',
+  description: 'Sign in to your Farmconsul account and manage your farming operations efficiently.',
+  ogTitle: 'Login — Farmconsul',
+  ogDescription: 'Sign in to your Farmconsul account and manage your farming operations efficiently.',
+  ogUrl: 'https://farmconsul.com/login',
+})
+
 useHead({
-  title: 'Login - FarmConsul ',
-  meta: [
-    { name: 'description', content: 'Sign in to your FarmConsul account and manage your farming operations efficiently.' }
-  ]
+  link: [{ rel: 'canonical', href: 'https://farmconsul.com/login' }],
 })
 </script>
 

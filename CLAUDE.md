@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Farmconsul — an **offline-first PWA** for farm management (crops, livestock, breeding, plantings, harvests, inventory, users). Nuxt 4 SPA (`ssr: false`) with a Laravel/Sanctum backend. Built mobile-first for use on phones with intermittent connectivity.
+Farmconsul — an **offline-first PWA** for farm management (crops, livestock, breeding, plantings, harvests, inventory, users). Nuxt 4 with **hybrid rendering**: the public pages (`/`, `/login`, `/register`, `/pricing`, `/forgot-password`) are prerendered at build time for SEO, while `/admin/**` and token-based auth routes are client-only SPA (`ssr: false` via `routeRules`). Laravel/Sanctum backend. Built mobile-first for use on phones with intermittent connectivity.
 
 ## Commands
 
@@ -12,7 +12,7 @@ Farmconsul — an **offline-first PWA** for farm management (crops, livestock, b
 npm run dev        # Dev server at http://localhost:3000 (Vite proxied; HMR clientPort=3000)
 npm run build      # Production build → .output/ (dist symlinks to .output/public)
 npm run preview    # Preview the production build
-npm run generate   # SSG — unused (SSR is disabled)
+npm run generate   # Static build used by the Dockerfile — prerenders public pages, SPA shell (200.html) for the rest
 ```
 
 There is **no test runner, linter, or typecheck script** configured. `postinstall` runs `nuxt prepare` to regenerate `.nuxt/` types. To typecheck manually: `npx nuxi typecheck`.
@@ -44,7 +44,7 @@ Provides `nuxtApp.$apiFetch` (typed in `app.d.ts`). A `$fetch` instance with `cr
 - **`app/stores/auth.ts`** (Pinia) is the source of truth for the session. Uses `$apiFetch` against `/login`, `/logout`, `/register`, `/api/user`. Exposes `isLoggedIn`, `isInitialized`, `initialize()`. Booted client-side by `app/plugins/01.auth.ts`.
 - **`app/composables/useAuth.ts`** talks to the same endpoints but with **`axios` directly** (legacy). Some pages use this instead of the store.
 
-Route guards: `middleware/auth.ts` (protected — calls `authStore.initialize()` then redirects to `/login`) and `middleware/guest.ts` (redirects logged-in users to `/admin`). Guards are client-only because SSR is off.
+Route guards: `middleware/auth.ts` (protected — calls `authStore.initialize()` then redirects to `/login`) and `middleware/guest.ts` (redirects logged-in users to `/admin`). Guards effectively run client-side only (`auth.ts` skips on server; there is never a session at prerender time). **Public pages must stay SSR-safe** — no browser APIs outside `onMounted`/`import.meta.client` guards, since they execute in Node during `nuxt generate`.
 
 ### Routing & layouts
 File-based routing under `app/pages/`. Admin app lives under `app/pages/admin/**` and uses `layout: 'admin'` + `middleware: 'auth'`. Public pages (`index`, `login`, `register`, `pricing`, `forgot-password`) use the default/`app` layout. Dynamic routes use `[uuid]` / `[token]` params.

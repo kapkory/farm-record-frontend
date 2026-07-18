@@ -145,6 +145,33 @@ export const entityRegistry = {
       create: () => '/api/v1/farms/farm/productions/store'
     },
     parentOf: ctx => ctx.parentUuid ?? null
+  },
+
+  // Bee module. Hives are listed unscoped (each record carries apiary_uuid)
+  // so one resource instance can serve every apiary; the hive `code` is
+  // server-assigned — offline-created hives show a "code pending" state
+  // until the queued create syncs.
+  hive: {
+    name: 'hive',
+    endpoints: {
+      list: () => '/api/v1/farms/farm/bees/hives/list',
+      create: () => '/api/v1/farms/farm/bees/hives',
+      show: uuid => `/api/v1/farms/farm/bees/hives/${uuid}`,
+      update: uuid => `/api/v1/farms/farm/bees/hives/${uuid}`,
+      remove: uuid => `/api/v1/farms/farm/bees/hives/${uuid}`
+    },
+    parentOf: () => null
+  },
+
+  // A harvest session (one POST covering many hives/products). The client
+  // uuid doubles as the backend's idempotent session id (trace_number).
+  beeHarvest: {
+    name: 'beeHarvest',
+    endpoints: {
+      list: () => '/api/v1/farms/farm/bees/harvests/list',
+      create: () => '/api/v1/farms/farm/bees/harvests'
+    },
+    parentOf: () => null
   }
 } satisfies Record<string, EntityConfig>
 

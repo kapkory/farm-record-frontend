@@ -426,11 +426,16 @@ definePageMeta({
 })
 
 // SEO Meta
+useSeoMeta({
+  title: 'Create a Free Account — Farmconsul',
+  description: 'Join Farmconsul and manage crops, livestock, workers and harvests from your phone — even offline. Free to start.',
+  ogTitle: 'Create a Free Account — Farmconsul',
+  ogDescription: 'Join Farmconsul and manage crops, livestock, workers and harvests from your phone — even offline. Free to start.',
+  ogUrl: 'https://farmconsul.com/register',
+})
+
 useHead({
-  title: 'Register - FarmConsul',
-  meta: [
-    { name: 'description', content: 'Join FarmConsul and transform your farming operations with our comprehensive management system.' }
-  ]
+  link: [{ rel: 'canonical', href: 'https://farmconsul.com/register' }],
 })
 </script>
 

@@ -14,7 +14,7 @@
             </svg>
           </div>
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">FarmManage Pro</h1>
+            <h1 class="text-2xl font-bold text-gray-900">Farmconsul</h1>
             <p class="text-sm text-gray-600">Smart Farm Management System</p>
           </div>
         </div>
@@ -329,11 +329,11 @@ onUnmounted(() => {
 })
 
 // SEO Meta
-useHead({
-  title: 'Forgot Password - FarmManage Pro',
-  meta: [
-    { name: 'description', content: 'Reset your FarmManage Pro password. Enter your email to receive a password reset link.' }
-  ]
+useSeoMeta({
+  title: 'Forgot Password — Farmconsul',
+  description: 'Reset your Farmconsul password. Enter your email to receive a password reset link.',
+  // Utility page — no search value, keep it out of the index.
+  robots: 'noindex, follow',
 })
 </script>
 

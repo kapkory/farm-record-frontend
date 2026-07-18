@@ -122,6 +122,18 @@
           <span class="font-medium">Livestocks</span>
         </NuxtLink>
 
+        <!-- Bees -->
+        <NuxtLink
+          to="/admin/bees"
+          class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
+          :class="{'bg-green-50 text-green-600': $route.path.startsWith('/admin/bees')}"
+        >
+          <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 16.05v-8.1a1 1 0 00-.5-.87l-7.5-4.33a2 2 0 00-2 0L3.5 7.08a1 1 0 00-.5.87v8.1a1 1 0 00.5.87l7.5 4.33a2 2 0 002 0l7.5-4.33a1 1 0 00.5-.87z"/>
+          </svg>
+          <span class="font-medium">Bees</span>
+        </NuxtLink>
+
         <!-- Inventory -->
         <NuxtLink 
           to="/admin/inventory"

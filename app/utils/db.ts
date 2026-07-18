@@ -46,6 +46,19 @@ export interface SyncQueueItem {
 
 const recordKey = (entity: string, uuid: string) => `${entity}:${uuid}`
 
+/**
+ * IndexedDB's structured clone rejects Vue reactivity proxies (and
+ * functions, refs, …), so a component passing `someRef.value` or a record
+ * plucked from a reactive array straight into a write throws
+ * DataCloneError. Everything stored here must be JSON-shaped anyway — it
+ * is sent as an API body or came from one — so a JSON round-trip both
+ * unwraps proxies and drops anything non-serializable.
+ */
+function toPlain<T>(value: T): T {
+  if (value === undefined || value === null) return value
+  return JSON.parse(JSON.stringify(value))
+}
+
 /** Best-effort translation of a v2 queue item into the v3 shape. */
 function upgradeQueueItem(item: any): SyncQueueItem {
   if (item.payload !== undefined && item.status !== undefined) return item
@@ -192,7 +205,7 @@ class FarmManageDB {
       entity,
       uuid,
       parent: parent ?? '',
-      data,
+      data: toPlain(data),
       synced,
       syncError,
       savedAt: Date.now()
@@ -229,7 +242,7 @@ class FarmManageDB {
 
   async enqueue(item: SyncQueueItem): Promise<void> {
     const store = await this.tx('syncQueue', 'readwrite')
-    store.put(item)
+    store.put({ ...item, payload: toPlain(item.payload) })
     return this.complete(store)
   }
 
@@ -279,7 +292,7 @@ class FarmManageDB {
   async setCache(key: string, data: any, ttl?: number): Promise<void> {
     const store = await this.tx('cache', 'readwrite')
     const expiry = ttl ? Date.now() + ttl : null
-    store.put({ key, data, expiry, savedAt: Date.now() })
+    store.put({ key, data: toPlain(data), expiry, savedAt: Date.now() })
     return this.complete(store)
   }
 
