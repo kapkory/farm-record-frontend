@@ -71,6 +71,15 @@
           </div>
         </div>
         <div class="mt-4 sm:mt-0 flex gap-2">
+          <Button
+            v-if="animal.status === 'active'"
+            variant="outline"
+            class="text-green-600 border-green-300 hover:bg-green-50"
+            @click="showSaleModal = true"
+          >
+            <Banknote class="w-4 h-4 mr-2" />
+            Sell
+          </Button>
           <Button variant="outline" @click="editAnimal">
             <Pencil class="w-4 h-4 mr-2" />
             Edit
@@ -228,6 +237,7 @@
 
         <div class="p-4">
           <AnimalTransactionTab v-if="activeTab === 'overview'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
+          <AnimalProductionTab v-else-if="activeTab === 'production'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <AnimalTreatmentTab v-else-if="activeTab === 'treatments'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <AnimalBreedingTab v-else-if="activeTab === 'breedings'" :animal-uuid="uuid" :tracking-type="animal.tracking_type"  v-if="animal.tracking_type == 'individual'"/>
           <AnimalTaskTab v-else-if="activeTab === 'tasks'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
@@ -271,11 +281,13 @@
         </div>
       </div>
     </Teleport>
+
+    <RecordSaleModal :open="showSaleModal" :context="saleContext" @close="showSaleModal = false" @saved="fetchAnimal" />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ArrowLeft, Tag, Users, Pencil, Trash2, Clock, X } from 'lucide-vue-next'
+import { ArrowLeft, Banknote, Tag, Users, Pencil, Trash2, Clock, X } from 'lucide-vue-next'
 // import mockData from '~/data/animals.json'
 
 definePageMeta({
@@ -318,9 +330,25 @@ const loading = ref(true)
 const loadError = ref<string | null>(null)
 const activeTab = ref('overview')
 const showDeleteConfirm = ref(false)
+const showSaleModal = ref(false)
+
+const saleContext = computed(() => {
+  if (!animal.value) return null
+  const isIndividual = animal.value.tracking_type === 'individual'
+  const label = (isIndividual ? animal.value.name : animal.value.group_name) || 'this animal'
+  return {
+    category: 'animal',
+    product: label,
+    unit: 'head',
+    sellableType: isIndividual ? 'animal' : 'animal_group',
+    sellableUuid: String(route.params.uuid || ''),
+    sellableLabel: label
+  }
+})
 
 const tabs = [
   { key: 'overview', label: 'Transactions' },
+  { key: 'production', label: 'Production' },
   { key: 'treatments', label: 'Treatments' },
   { key: 'breedings', label: 'Breedings' },
   { key: 'tasks', label: 'Tasks' },

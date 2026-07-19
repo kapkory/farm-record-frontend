@@ -31,6 +31,13 @@
           <Scale class="w-4 h-4 mr-2" />
           Record Harvest
         </button>
+        <button
+          class="inline-flex items-center px-4 py-2 bg-white border border-green-500 text-green-600 text-sm font-semibold rounded-lg hover:bg-green-50 transition-colors"
+          @click="showSaleModal = true"
+        >
+          <Banknote class="w-4 h-4 mr-2" />
+          Record Sale
+        </button>
       </div>
     </div>
 
@@ -358,11 +365,13 @@
         </div>
       </div>
     </div>
+
+    <RecordSaleModal :open="showSaleModal" :context="beeSaleContext" @close="showSaleModal = false" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { CheckCircle2, Hexagon, Plus, Scale, Settings, WifiOff, X } from 'lucide-vue-next'
+import { Banknote, CheckCircle2, Hexagon, Plus, Scale, Settings, WifiOff, X } from 'lucide-vue-next'
 
 definePageMeta({
   middleware: ['auth'],
@@ -371,6 +380,9 @@ definePageMeta({
 
 const { $apiFetch } = useNuxtApp()
 const { getReference } = useReferenceData()
+
+const showSaleModal = ref(false)
+const beeSaleContext = { category: 'bee_product', product: 'Honey', unit: 'kg' }
 
 const hiveResource = useHives()
 const harvests = useBeeHarvests()

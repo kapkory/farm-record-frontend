@@ -160,6 +160,36 @@ export const useAnimalTasks = (animalUuid: string, trackingType: 'individual' | 
 
   const fetchTasks = () => resource.fetch()
 
+  const togglingUuid = ref<string | null>(null)
+  const statusError = ref<string | null>(null)
+
+  const isTaskDone = (task: AnimalTaskRecord) => Number(task.task_status) === 4
+
+  // Offline-first: the status flip is written to IndexedDB and queued, then
+  // synced when online. The PUT endpoint requires a title, so send it along.
+  const toggleTaskDone = async (task: AnimalTaskRecord) => {
+    if (!task.uuid || togglingUuid.value) return
+    togglingUuid.value = task.uuid
+    statusError.value = null
+    const next = isTaskDone(task) ? 1 : 4
+
+    try {
+      const result = await resource.update(task.uuid, {
+        title: task.title || 'Untitled task',
+        task_status: next
+      })
+      if (!result.ok) {
+        statusError.value = result.message || 'Failed to update task status'
+        return
+      }
+      // Sub-task rows render from the parent's nested array, which the
+      // resource items list doesn't track — update the row in place.
+      task.task_status = next
+    } finally {
+      togglingUuid.value = null
+    }
+  }
+
   const saveTask = async () => {
     submitting.value = true
     submitError.value = null
@@ -225,6 +255,10 @@ export const useAnimalTasks = (animalUuid: string, trackingType: 'individual' | 
     openModal,
     closeModal,
     fetchTasks,
-    saveTask
+    saveTask,
+    togglingUuid,
+    statusError,
+    isTaskDone,
+    toggleTaskDone
   }
 }

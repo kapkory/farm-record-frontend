@@ -321,12 +321,17 @@
 </template>
 
 <script setup lang="ts">
+import { db } from '../../../utils/db'
+
 definePageMeta({
   layout: 'admin',
   middleware: ['auth'],
 })
 
 const { getReference } = useReferenceData()
+// Used only for status toggles: offline-first update queued through the
+// sync engine (PUT /api/v1/tasks/{uuid}).
+const taskResource = useOfflineEntity<Record<string, any>>('task', {})
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CalendarApiTask {
@@ -539,8 +544,27 @@ onMounted(() => {
   fetchCalendarTasks()
 })
 
-function toggleTaskStatus(task: CalendarApiTask) {
-  task.status = task.status === 'completed' ? 'pending' : 'completed'
+async function toggleTaskStatus(task: CalendarApiTask) {
+  const previous = task.status
+  const next = previous === 'completed' ? 'pending' : 'completed'
+  task.status = next
+
+  // Offline-first: queued and synced by the entity layer. The PUT endpoint
+  // requires a title, so send it along with the numeric status.
+  const result = await taskResource.update(task.uuid, {
+    title: task.title || 'Untitled task',
+    task_status: next === 'completed' ? 4 : 1
+  })
+
+  if (!result.ok) {
+    task.status = previous
+    calendarError.value = result.message || 'Unable to update the task status.'
+    return
+  }
+
+  // Keep the cached calendar copy in step so a reload within the TTL
+  // doesn't resurrect the old status.
+  await db.setCache('calendar_tasks', JSON.parse(JSON.stringify(allTasks.value)), 60 * 60 * 1000)
 }
 
 function openAddTask() {

@@ -42,6 +42,13 @@
             </div>
           </div>
           <div class="flex gap-2">
+            <button
+              class="inline-flex items-center gap-2 rounded-md border border-green-500 bg-white px-3 py-2 text-sm font-medium text-green-600 transition-colors hover:bg-green-50"
+              @click="showSaleModal = true"
+            >
+              <Banknote class="h-4 w-4" />
+              Sell Produce
+            </button>
             <button class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
               <Pencil class="h-4 w-4" />
               Edit
@@ -390,11 +397,13 @@
         </div>
       </div>
     </Teleport>
+
+    <RecordSaleModal :open="showSaleModal" :context="saleContext" @close="showSaleModal = false" />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ChevronLeft, Sprout, Pencil, Trash2, Plus, X } from 'lucide-vue-next'
+import { Banknote, ChevronLeft, Sprout, Pencil, Trash2, Plus, X } from 'lucide-vue-next'
 
 definePageMeta({
   middleware: ['auth'],
@@ -541,6 +550,16 @@ const transactionResource = useOfflineEntity<LedgerTransactionListItem & Record<
 })
 
 const planting = ref<Planting | null>(null)
+const showSaleModal = ref(false)
+
+const saleContext = computed(() => ({
+  category: 'crop',
+  product: planting.value?.crop?.name ?? '',
+  unit: 'bags',
+  sellableType: 'planting',
+  sellableUuid: String(route.params.uuid || ''),
+  sellableLabel: planting.value?.crop?.name ?? 'this planting'
+}))
 const loading = ref(true)
 const error = ref<string | null>(null)
 const activeTab = ref<PlantingTab>('overview')

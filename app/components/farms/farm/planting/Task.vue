@@ -9,6 +9,8 @@
         <p class="mt-1 text-sm text-gray-500">Track work to be done for this planting, who is responsible, and the current progress.</p>
       </div>
 
+      <div v-if="statusError" class="border-b border-red-100 bg-red-50 px-6 py-3 text-sm text-red-700">{{ statusError }}</div>
+
       <div v-if="loading" class="flex items-center justify-center py-12">
         <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-green-500"></div>
         <span class="ml-3 text-gray-600">Loading tasks...</span>
@@ -36,13 +38,26 @@
             <template v-for="task in tasks" :key="task.id ?? task.uuid">
               <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4">
-                  <p class="text-sm font-medium text-gray-900">
-                    {{ task.title || 'Untitled task' }}
-                    <span v-if="task.sub_tasks_count" class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                      {{ task.sub_tasks_count }} sub-task{{ task.sub_tasks_count === 1 ? '' : 's' }}
-                    </span>
-                  </p>
-                  <p class="mt-1 max-w-md text-sm text-gray-500">{{ task.description || '—' }}</p>
+                  <div class="flex items-start gap-3">
+                    <button
+                      type="button"
+                      @click="toggleDone(task)"
+                      :disabled="!task.uuid || togglingUuid === task.uuid"
+                      :title="isDone(task) ? 'Mark as not done' : 'Mark as done'"
+                      :class="['mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors', isDone(task) ? 'border-green-500 bg-green-500' : 'border-gray-300 hover:border-green-400']"
+                    >
+                      <Check v-if="isDone(task)" class="h-3 w-3 text-white" />
+                    </button>
+                    <div>
+                      <p :class="['text-sm font-medium', isDone(task) ? 'text-gray-400 line-through' : 'text-gray-900']">
+                        {{ task.title || 'Untitled task' }}
+                        <span v-if="task.sub_tasks_count" class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                          {{ task.sub_tasks_count }} sub-task{{ task.sub_tasks_count === 1 ? '' : 's' }}
+                        </span>
+                      </p>
+                      <p class="mt-1 max-w-md text-sm text-gray-500">{{ task.description || '—' }}</p>
+                    </div>
+                  </div>
                 </td>
                 <td class="whitespace-nowrap px-6 py-4">
                   <span :class="priorityBadgeClass(task.priority)">{{ priorityLabel(task.priority) }}</span>
@@ -58,8 +73,17 @@
                 <td class="py-3 pl-12 pr-6">
                   <div class="flex items-start gap-2">
                     <span class="mt-0.5 text-gray-300">↳</span>
+                    <button
+                      type="button"
+                      @click="toggleDone(sub)"
+                      :disabled="!sub.uuid || togglingUuid === sub.uuid"
+                      :title="isDone(sub) ? 'Mark as not done' : 'Mark as done'"
+                      :class="['mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors', isDone(sub) ? 'border-green-500 bg-green-500' : 'border-gray-300 hover:border-green-400']"
+                    >
+                      <Check v-if="isDone(sub)" class="h-2.5 w-2.5 text-white" />
+                    </button>
                     <div>
-                      <p class="text-sm font-medium text-gray-700">{{ sub.title || 'Untitled task' }}</p>
+                      <p :class="['text-sm font-medium', isDone(sub) ? 'text-gray-400 line-through' : 'text-gray-700']">{{ sub.title || 'Untitled task' }}</p>
                       <p class="mt-0.5 max-w-md text-xs text-gray-500">{{ sub.description || '—' }}</p>
                     </div>
                   </div>
@@ -182,7 +206,7 @@
 </template>
 
 <script lang="ts" setup>
-import { Plus, X } from 'lucide-vue-next'
+import { Check, Plus, X } from 'lucide-vue-next'
 
 type TaskPriority = 1 | 2 | 3 | 4
 type TaskStatus = 1 | 2 | 3 | 4 | 5
@@ -378,6 +402,36 @@ const fetchFarmUsers = async () => {
 }
 
 const fetchTasks = () => resource.fetch()
+
+const togglingUuid = ref<string | null>(null)
+const statusError = ref<string | null>(null)
+
+const isDone = (task: TaskRecord) => Number(task.task_status) === 4
+
+// Offline-first: the status flip is written to IndexedDB and queued, then
+// synced when online. The PUT endpoint requires a title, so send it along.
+const toggleDone = async (task: TaskRecord) => {
+  if (!task.uuid || togglingUuid.value) return
+  togglingUuid.value = task.uuid
+  statusError.value = null
+  const next = isDone(task) ? 1 : 4
+
+  try {
+    const result = await resource.update(task.uuid, {
+      title: task.title || 'Untitled task',
+      task_status: next
+    })
+    if (!result.ok) {
+      statusError.value = result.message || 'Failed to update task status'
+      return
+    }
+    // Sub-task rows render from the parent's nested array, which the
+    // resource items list doesn't track — update the row in place.
+    task.task_status = next
+  } finally {
+    togglingUuid.value = null
+  }
+}
 
 const saveTask = async () => {
   if (!taskableUuidValue.value) return

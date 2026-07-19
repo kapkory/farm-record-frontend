@@ -31,7 +31,8 @@ export const referenceEndpoints = {
   breeds: '/api/v1/settings/animals/breeds/list',
   bee_hives: '/api/v1/farms/farm/bees/hives/list',
   treatment_plans: '/api/v1/settings/animals/treatment-plans/list',
-  farms_list: '/api/v1/farms?all=1'
+  farms_list: '/api/v1/farms?all=1',
+  buyers: '/api/v1/farms/farm/buyers/list'
 } as const
 
 export type ReferenceKey = keyof typeof referenceEndpoints

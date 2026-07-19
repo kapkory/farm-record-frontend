@@ -9,9 +9,17 @@
         <p class="text-gray-500 mt-1 text-sm">Here's an overview of your farm operations.</p>
       </div>
       <div class="mt-3 sm:mt-0 flex items-center gap-2">
+        <button
+          type="button"
+          @click="showSaleModal = true"
+          class="inline-flex items-center gap-1.5 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 transition-colors"
+        >
+          <Banknote class="h-4 w-4" />
+          Record Sale
+        </button>
         <NuxtLink
           to="/admin/farms/add"
-          class="inline-flex items-center gap-1.5 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 transition-colors"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
           <Plus class="h-4 w-4" />
           New Farm
@@ -262,6 +270,8 @@
         </div>
       </div>
     </div>
+
+    <RecordSaleModal :open="showSaleModal" @close="showSaleModal = false" @saved="fetchDashboardData" />
   </div>
 </template>
 
@@ -275,7 +285,7 @@ import {
   CheckCircle2,
   Warehouse,
   ListTodo,
-  Users,
+  Banknote,
   Leaf,
   Timer,
   CircleCheck,
@@ -293,6 +303,8 @@ const loading = ref(true)
 const farms = ref([])
 const plantings = ref([])
 const tasks = ref([])
+const weekSalesTotal = ref(null)
+const showSaleModal = ref(false)
 
 const greeting = computed(() => {
   const h = new Date().getHours()
@@ -328,10 +340,10 @@ const statCards = computed(() => [
     iconColor: 'text-orange-600',
   },
   {
-    label: 'Team',
-    value: farms.value.reduce((sum, f) => sum + (f.total_personnels ?? 0), 0) || '—',
-    sub: 'across all farms',
-    icon: Users,
+    label: 'Money In (7 days)',
+    value: weekSalesTotal.value === null ? '—' : `KES ${Number(weekSalesTotal.value).toLocaleString('en-KE', { maximumFractionDigits: 0 })}`,
+    sub: 'from recorded sales',
+    icon: Banknote,
     iconBg: 'bg-blue-50',
     iconColor: 'text-blue-600',
   },
@@ -339,7 +351,8 @@ const statCards = computed(() => [
 
 // --- Computed helpers ---
 const pendingTasks = computed(() =>
-  tasks.value.filter(t => t.task_status !== 5) // 5 = completed
+  // 4 = completed, 5 = cancelled — everything else still needs doing
+  tasks.value.filter(t => ![4, 5].includes(Number(t.task_status)))
 )
 
 const plantingBreakdown = computed(() => {
@@ -383,23 +396,25 @@ function statusStyle(status) {
   return map[status] || map.growing
 }
 
+// Backend scale: 1 low → 4 critical
 function priorityColor(priority) {
-  const map = { 1: 'bg-red-500', 2: 'bg-orange-400', 3: 'bg-yellow-400', 4: 'bg-gray-300' }
+  const map = { 4: 'bg-red-500', 3: 'bg-orange-400', 2: 'bg-yellow-400', 1: 'bg-gray-300' }
   return map[priority] || 'bg-gray-300'
 }
 
+// Backend scale: 1 pending, 2 in progress, 3 on hold, 4 completed, 5 cancelled
 function taskStatusLabel(status) {
-  const map = { 1: 'Open', 2: 'In Progress', 3: 'Review', 4: 'Blocked', 5: 'Done' }
-  return map[status] || 'Open'
+  const map = { 1: 'Pending', 2: 'In Progress', 3: 'On Hold', 4: 'Done', 5: 'Cancelled' }
+  return map[status] || 'Pending'
 }
 
 function taskStatusBadge(status) {
   const map = {
     1: 'bg-blue-50 text-blue-600',
     2: 'bg-yellow-50 text-yellow-700',
-    3: 'bg-purple-50 text-purple-600',
-    4: 'bg-red-50 text-red-600',
-    5: 'bg-green-50 text-green-600',
+    3: 'bg-amber-50 text-amber-700',
+    4: 'bg-green-50 text-green-600',
+    5: 'bg-red-50 text-red-600',
   }
   return map[status] || 'bg-gray-100 text-gray-600'
 }
@@ -426,6 +441,17 @@ async function fetchDashboardData() {
     tasks.value = tasksRes.data
   } finally {
     loading.value = false
+  }
+
+  // Separate fetch: the summary endpoint returns an object, not a list,
+  // so it can't go through the reference cache like the others.
+  try {
+    const from = (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().split('T')[0] })()
+    const { $apiFetch } = useNuxtApp()
+    const res = await $apiFetch(`/api/v1/farms/farm/sales/summary?from=${from}`)
+    weekSalesTotal.value = res?.data?.total_amount ?? null
+  } catch {
+    weekSalesTotal.value = null
   }
 }
 

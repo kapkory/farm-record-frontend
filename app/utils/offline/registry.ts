@@ -172,6 +172,28 @@ export const entityRegistry = {
       create: () => '/api/v1/farms/farm/bees/harvests'
     },
     parentOf: () => null
+  },
+
+  // Sales module. Creates are idempotent by client uuid (the backend answers
+  // replays from the stored sale). Payments/voids are separate online-only
+  // endpoints — they need current server state to validate balances.
+  sale: {
+    name: 'sale',
+    endpoints: {
+      list: () => '/api/v1/farms/farm/sales/list',
+      create: () => '/api/v1/farms/farm/sales',
+      show: uuid => `/api/v1/farms/farm/sales/${uuid}`
+    },
+    parentOf: () => null
+  },
+
+  buyer: {
+    name: 'buyer',
+    endpoints: {
+      list: () => '/api/v1/farms/farm/buyers/list',
+      create: () => '/api/v1/farms/farm/buyers'
+    },
+    parentOf: () => null
   }
 } satisfies Record<string, EntityConfig>
 
