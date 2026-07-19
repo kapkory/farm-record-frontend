@@ -26,6 +26,7 @@
       <AnimalTypesTab v-if="activeTab === 'types'" />
       <AnimalBreedsTab v-if="activeTab === 'breeds'" />
       <AnimalTreatmentType v-if="activeTab === 'treatments'" />
+      <TreatmentPlansTab v-if="activeTab === 'plans'" />
     </div>
   </div>
 </template>
@@ -39,7 +40,8 @@ definePageMeta({
 const tabs = [
   { id: 'types', label: 'Animal Types' },
   { id: 'breeds', label: 'Breeds' },
-  { id: 'treatments', label: 'Treatment Types' }
+  { id: 'treatments', label: 'Treatment Types' },
+  { id: 'plans', label: 'Vaccination Plans' }
 ]
 
 const activeTab = ref('types')

@@ -30,6 +30,7 @@ export const referenceEndpoints = {
   animal_breeds: '/api/v1/settings/animals/animal-breeds/list',
   breeds: '/api/v1/settings/animals/breeds/list',
   bee_hives: '/api/v1/farms/farm/bees/hives/list',
+  treatment_plans: '/api/v1/settings/animals/treatment-plans/list',
   farms_list: '/api/v1/farms?all=1'
 } as const
 
