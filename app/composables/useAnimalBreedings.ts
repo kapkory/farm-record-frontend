@@ -72,6 +72,64 @@ export const useAnimalBreedings = (animalUuid: string, trackingType: 'individual
   const sireSearch = ref('')
   const showSireResults = ref(false)
 
+  // Gestation length for the dam (from the animal payload). Lets the form
+  // pre-fill the expected birth date the moment a service date is picked,
+  // matching what the backend will compute on save.
+  const gestationDays = ref<number | null>(null)
+  const birthDateManuallyEdited = ref(false)
+
+  const addDays = (isoDate: string, days: number) => {
+    const d = new Date(`${isoDate}T00:00:00`)
+    if (Number.isNaN(d.getTime())) return ''
+    d.setDate(d.getDate() + days)
+    return d.toISOString().split('T')[0] ?? ''
+  }
+
+  const applyEstimatedBirthDate = () => {
+    if (birthDateManuallyEdited.value) return
+    if (!gestationDays.value || !breedingForm.value.service_date) return
+    breedingForm.value.expected_birth_date = addDays(breedingForm.value.service_date, gestationDays.value)
+  }
+
+  const setGestationDays = (days: number | null | undefined) => {
+    gestationDays.value = days && days > 0 ? Math.round(days) : null
+    applyEstimatedBirthDate()
+  }
+
+  // The farmer typing their own date wins over the estimate.
+  const markBirthDateEdited = () => { birthDateManuallyEdited.value = true }
+
+  watch(() => breedingForm.value.service_date, applyEstimatedBirthDate)
+
+  const expectedBirthHint = computed(() => {
+    if (!gestationDays.value) return ''
+    return birthDateManuallyEdited.value
+      ? `Typical gestation is about ${gestationDays.value} days.`
+      : `Estimated from a ~${gestationDays.value}-day gestation. Change it if you know better.`
+  })
+
+  // Non-blocking inbreeding warning — checked live against recorded pedigree
+  // whenever a sire is chosen for this dam.
+  const { $apiFetch } = useNuxtApp()
+  const inbreedingWarning = ref<{ severity: string | null; message: string } | null>(null)
+
+  const checkInbreeding = async () => {
+    inbreedingWarning.value = null
+    const sireUuid = breedingForm.value.sire_id
+    if (!sireUuid) return
+    try {
+      const res = await $apiFetch<any>('/api/v1/farms/farm/animals/breedings/inbreeding-check', {
+        params: { dam_uuid: animalUuid, sire_uuid: sireUuid }
+      })
+      const data = res?.data
+      if (data?.related && data.warnings?.length) {
+        inbreedingWarning.value = { severity: data.severity ?? 'low', message: data.warnings[0] }
+      }
+    } catch {
+      // Offline or check unavailable — silently skip; not a blocker.
+    }
+  }
+
   const filteredSires = computed(() => {
     const query = sireSearch.value.trim().toLowerCase()
     if (!query) return sireOptions.value
@@ -88,6 +146,9 @@ export const useAnimalBreedings = (animalUuid: string, trackingType: 'individual
     errorList.value = []
     sireSearch.value = ''
     showSireResults.value = false
+    birthDateManuallyEdited.value = false
+    inbreedingWarning.value = null
+    applyEstimatedBirthDate()
   }
 
   const openModal = () => {
@@ -110,6 +171,7 @@ export const useAnimalBreedings = (animalUuid: string, trackingType: 'individual
 
   const selectSire = (sire: { uuid: string; name: string; tag_number: string | null; gender?: string }) => {
     breedingForm.value.sire_id = sire.uuid
+    checkInbreeding()
     sireSearch.value = `${sire.name}${sire.tag_number ? ` (${sire.tag_number})` : ''}`
     showSireResults.value = false
   }
@@ -235,6 +297,10 @@ export const useAnimalBreedings = (animalUuid: string, trackingType: 'individual
     selectSire,
     fetchBreedings,
     saveBreeding,
-    updateBreedingStatus
+    updateBreedingStatus,
+    setGestationDays,
+    markBirthDateEdited,
+    expectedBirthHint,
+    inbreedingWarning
   }
 }

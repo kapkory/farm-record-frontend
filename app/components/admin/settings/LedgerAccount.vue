@@ -231,14 +231,16 @@ const submitError = ref<string | null>(null)
 const editingId = ref<number | null>(null)
 const editingUuid = ref<string | null>(null)
 
-const activeTab = ref<LedgerType>('expense')
+const activeTab = ref<LedgerType>('revenue')
 
+// Money In / Money Out first — those are the two everyday tabs; the
+// accounting-flavored types come after with plain-language names.
 const tabTypes = [
-  { value: 'asset'     as const, label: 'Asset',     icon: Landmark,     activeClass: 'bg-blue-500 text-white',   dotClass: 'bg-blue-500',   bannerClass: 'bg-blue-50 border-blue-200 text-blue-800',       desc: 'Things the farm owns — land, equipment, buildings, cash, inventory.' },
-  { value: 'liability' as const, label: 'Liability',  icon: CreditCard,   activeClass: 'bg-amber-500 text-white',  dotClass: 'bg-amber-500',  bannerClass: 'bg-amber-50 border-amber-200 text-amber-800',     desc: 'What the farm owes — loans, credit, accounts payable.' },
-  { value: 'equity'    as const, label: 'Equity',     icon: Scale,        activeClass: 'bg-purple-500 text-white', dotClass: 'bg-purple-500', bannerClass: 'bg-purple-50 border-purple-200 text-purple-800', desc: "Owner's stake in the farm — capital contributed and retained earnings." },
-  { value: 'revenue'   as const, label: 'Revenue',    icon: TrendingUp,   activeClass: 'bg-green-500 text-white',  dotClass: 'bg-green-500',  bannerClass: 'bg-green-50 border-green-200 text-green-800',     desc: 'Money earned — crop sales, livestock sales, service income.' },
-  { value: 'expense'   as const, label: 'Expense',    icon: TrendingDown, activeClass: 'bg-red-500 text-white',    dotClass: 'bg-red-500',    bannerClass: 'bg-red-50 border-red-200 text-red-800',           desc: 'Money spent — seeds, fertilizer, labour, fuel, repairs.' },
+  { value: 'revenue'   as const, label: 'Money In',     icon: TrendingUp,   activeClass: 'bg-green-500 text-white',  dotClass: 'bg-green-500',  bannerClass: 'bg-green-50 border-green-200 text-green-800',     desc: 'Money earned — crop sales, livestock sales, service income.' },
+  { value: 'expense'   as const, label: 'Money Out',    icon: TrendingDown, activeClass: 'bg-red-500 text-white',    dotClass: 'bg-red-500',    bannerClass: 'bg-red-50 border-red-200 text-red-800',           desc: 'Money spent — seeds, fertilizer, labour, fuel, repairs.' },
+  { value: 'asset'     as const, label: 'Things I Own', icon: Landmark,     activeClass: 'bg-blue-500 text-white',   dotClass: 'bg-blue-500',   bannerClass: 'bg-blue-50 border-blue-200 text-blue-800',       desc: 'Things the farm owns — land, equipment, buildings, cash, inventory.' },
+  { value: 'liability' as const, label: 'Money I Owe',  icon: CreditCard,   activeClass: 'bg-amber-500 text-white',  dotClass: 'bg-amber-500',  bannerClass: 'bg-amber-50 border-amber-200 text-amber-800',     desc: 'What the farm owes — loans, credit, money due to suppliers.' },
+  { value: 'equity'    as const, label: 'Owner Money',  icon: Scale,        activeClass: 'bg-purple-500 text-white', dotClass: 'bg-purple-500', bannerClass: 'bg-purple-50 border-purple-200 text-purple-800', desc: "Your own money put into the farm, and what it has earned over time." },
 ]
 
 const activeTabConfig = computed(() => tabTypes.find(t => t.value === activeTab.value)!)

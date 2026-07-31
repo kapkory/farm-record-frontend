@@ -36,6 +36,9 @@
             />
             </div>
           <div class="flex items-center space-x-3">
+            <NuxtLink to="/plans" class="text-gray-600 hover:text-gray-900 font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+              Plans
+            </NuxtLink>
             <NuxtLink to="/login" class="text-gray-600 hover:text-gray-900 font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">
               Login
             </NuxtLink>
@@ -326,7 +329,7 @@
         <div class="flex gap-5 text-sm">
           <NuxtLink to="/login" class="hover:text-white transition-colors">Login</NuxtLink>
           <NuxtLink to="/register" class="hover:text-white transition-colors">Register</NuxtLink>
-          <NuxtLink to="/pricing" class="hover:text-white transition-colors">Pricing</NuxtLink>
+          <NuxtLink to="/plans" class="hover:text-white transition-colors">Plans</NuxtLink>
         </div>
       </div>
     </footer>

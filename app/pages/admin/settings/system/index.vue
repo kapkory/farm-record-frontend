@@ -5,15 +5,18 @@
       <p class="text-sm text-gray-500 mt-1">Manage system-wide configuration and lookup data.</p>
     </div>
 
-    <!-- Transaction Categories -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-lg font-semibold text-gray-900">Transaction Categories</h2>
-        <p class="text-sm text-gray-500 mt-0.5">Define income and expense categories used across the farm.</p>
-      </div>
-      <div class="p-6">
-        <LedgerAccount />
-      </div>
+    <!-- Money categories moved to their own section -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <h2 class="text-lg font-semibold text-gray-900">Money Categories</h2>
+      <p class="text-sm text-gray-500 mt-0.5">
+        Income and expense categories now have their own section.
+      </p>
+      <NuxtLink
+        to="/admin/settings/accounts"
+        class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 transition-colors"
+      >
+        Open Money Categories
+      </NuxtLink>
     </div>
   </div>
 </template>

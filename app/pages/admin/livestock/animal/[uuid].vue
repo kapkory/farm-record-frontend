@@ -239,7 +239,7 @@
           <AnimalTransactionTab v-if="activeTab === 'overview'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <AnimalProductionTab v-else-if="activeTab === 'production'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <AnimalTreatmentTab v-else-if="activeTab === 'treatments'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
-          <AnimalBreedingTab v-else-if="activeTab === 'breedings'" :animal-uuid="uuid" :tracking-type="animal.tracking_type"  v-if="animal.tracking_type == 'individual'"/>
+          <AnimalBreedingTab v-else-if="activeTab === 'breedings'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" :gestation-days="animal.gestation_days" v-if="animal.tracking_type == 'individual'"/>
           <AnimalTaskTab v-else-if="activeTab === 'tasks'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <div v-else class="text-center py-8">
             <Clock class="w-10 h-10 text-gray-300 mx-auto mb-2" />
@@ -321,6 +321,7 @@ interface Animal {
   location: string | null
   notes: string | null
   last_checkup: string | null
+  gestation_days: number | null
 }
 
 const resource = useOfflineEntity<Animal & Record<string, any>>('animal')
@@ -347,7 +348,7 @@ const saleContext = computed(() => {
 })
 
 const tabs = [
-  { key: 'overview', label: 'Transactions' },
+  { key: 'overview', label: 'Costs' },
   { key: 'production', label: 'Production' },
   { key: 'treatments', label: 'Treatments' },
   { key: 'breedings', label: 'Breedings' },

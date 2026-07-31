@@ -23,6 +23,11 @@ const syncing = ref(false)
 
 let listenersRegistered = false
 let drainInFlight: Promise<void> | null = null
+/** Guards against the same queue item being POSTed twice: create()/update()/
+ *  remove() call syncOne() directly (outside syncPendingChanges()'s lock),
+ *  so a queue drain triggered concurrently by an 'online'/visibilitychange
+ *  event can otherwise race the same just-enqueued item and double-post it. */
+const inFlightSyncs = new Map<string, Promise<SyncResult>>()
 
 export type SyncResult =
   | { ok: true, response?: any }
@@ -82,7 +87,16 @@ async function refreshCounts() {
  * rejection (422/404) rolls the item and record into a failed state the
  * user can discard; network/server errors leave it queued for retry.
  */
-async function syncOne(item: SyncQueueItem): Promise<SyncResult> {
+function syncOne(item: SyncQueueItem): Promise<SyncResult> {
+  const inFlight = inFlightSyncs.get(item.id)
+  if (inFlight) return inFlight
+
+  const promise = syncOneRequest(item).finally(() => inFlightSyncs.delete(item.id))
+  inFlightSyncs.set(item.id, promise)
+  return promise
+}
+
+async function syncOneRequest(item: SyncQueueItem): Promise<SyncResult> {
   const apiFetch = getApiFetch()
   if (!apiFetch) return { ok: false, kind: 'network' }
 

@@ -3,8 +3,8 @@
     <!-- Main Container -->
     <div class="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
       
-      <!-- Left Side - Farm Information -->
-      <div class="space-y-8 text-center lg:text-left">
+      <!-- Left Side - Farm Information (moves below the form on small screens) -->
+      <div class="order-2 lg:order-1 space-y-8 text-center lg:text-left">
         <!-- Logo -->
         <div class="flex items-center justify-center lg:justify-start space-x-3">
           <div class="w-12 h-12 bg-farm-green rounded-full flex items-center justify-center">
@@ -84,8 +84,8 @@
         </div>
       </div>
 
-      <!-- Right Side - Login Form -->
-      <div class="flex justify-center lg:justify-end">
+      <!-- Right Side - Login Form (first on small screens) -->
+      <div class="order-1 lg:order-2 flex justify-center lg:justify-end">
         <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
           <!-- Form Header -->
           <div class="text-center mb-8">

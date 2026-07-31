@@ -56,11 +56,14 @@ type LedgerFormErrorKey =
 
 type LedgerValidationErrors = Partial<Record<LedgerFormErrorKey, string>>
 
+// Farmer-friendly names everywhere: pills, summary chips and the type
+// cards never say "Revenue" or "Equity". Everyday forms show only the
+// first two; the rest sit behind a "more options" toggle.
 export const ledgerTypeOptions = [
   {
     value: 'revenue' as const,
-    label: 'Revenue',
-    farmerText: 'Money came in',
+    label: 'Money In',
+    farmerText: 'A sale or any other money received',
     emoji: '💰',
     selectedClass: 'border-green-500 bg-green-50',
     pillClass: 'bg-green-100 text-green-800',
@@ -68,8 +71,8 @@ export const ledgerTypeOptions = [
   },
   {
     value: 'expense' as const,
-    label: 'Expense',
-    farmerText: 'Money went out',
+    label: 'Money Out',
+    farmerText: 'Something you paid for',
     emoji: '🛒',
     selectedClass: 'border-red-500 bg-red-50',
     pillClass: 'bg-red-100 text-red-800',
@@ -77,8 +80,8 @@ export const ledgerTypeOptions = [
   },
   {
     value: 'asset' as const,
-    label: 'Asset',
-    farmerText: 'I own something',
+    label: 'Things I Own',
+    farmerText: 'Bought or own something of value',
     emoji: '🐄',
     selectedClass: 'border-blue-500 bg-blue-50',
     pillClass: 'bg-blue-100 text-blue-800',
@@ -86,8 +89,8 @@ export const ledgerTypeOptions = [
   },
   {
     value: 'liability' as const,
-    label: 'Liability',
-    farmerText: 'I owe someone',
+    label: 'Money I Owe',
+    farmerText: 'A loan or debt to pay back',
     emoji: '🏦',
     selectedClass: 'border-amber-500 bg-amber-50',
     pillClass: 'bg-amber-100 text-amber-800',
@@ -95,14 +98,23 @@ export const ledgerTypeOptions = [
   },
   {
     value: 'equity' as const,
-    label: 'Equity',
-    farmerText: 'Farm capital / owner investment',
+    label: 'Owner Money',
+    farmerText: 'Your own money put into the farm',
     emoji: '🌾',
     selectedClass: 'border-purple-500 bg-purple-50',
     pillClass: 'bg-purple-100 text-purple-800',
     textClass: 'text-purple-700'
   }
 ]
+
+/** The two types everyday recording needs: Money In and Money Out. */
+export const primaryLedgerTypeOptions = ledgerTypeOptions.slice(0, 2)
+
+/** Assets, loans, owner money — hidden behind a "more options" toggle. */
+export const advancedLedgerTypeOptions = ledgerTypeOptions.slice(2)
+
+export const isAdvancedLedgerType = (type: string) =>
+  advancedLedgerTypeOptions.some(option => option.value === type)
 
 export const useAnimalTransactions = (animalUuid: string, trackingType: 'individual' | 'group' = 'individual') => {
   const transactionableType = trackingType === 'group' ? 'animal_group' : 'animal'
@@ -171,7 +183,13 @@ export const useAnimalTransactions = (animalUuid: string, trackingType: 'individ
     computedUnitCost.value ? formatCurrency(computedUnitCost.value) : 'Calculated automatically'
   )
 
-  const moneyInTotal = computed(() => ledgerTypeTotal('revenue'))
+  // Income recorded directly on this tab (rare) plus sales made for this
+  // animal through the Record Sale flow (the usual path). Fetched from the
+  // sales endpoint so per-animal profitability stays accurate.
+  const ledgerRevenueTotal = computed(() => ledgerTypeTotal('revenue'))
+  const saleIncomeTotal = ref(0)
+  const saleIncomeCount = ref(0)
+  const moneyInTotal = computed(() => ledgerRevenueTotal.value + saleIncomeTotal.value)
   const moneyOutTotal = computed(() => ledgerTypeTotal('expense'))
   const netProfit = computed(() => moneyInTotal.value - moneyOutTotal.value)
 
@@ -372,6 +390,19 @@ export const useAnimalTransactions = (animalUuid: string, trackingType: 'individ
 
   const fetchLedgerTransactions = () => resource.fetch()
 
+  const { $apiFetch } = useNuxtApp()
+  const fetchSaleIncome = async () => {
+    try {
+      const res = await $apiFetch<any>(`/api/v1/farms/farm/sales/income/${transactionableType}/${animalUuid}`)
+      saleIncomeTotal.value = Number(res?.data?.total ?? 0)
+      saleIncomeCount.value = Number(res?.data?.count ?? 0)
+    } catch {
+      // Offline or not yet synced — fall back to ledger-only income.
+      saleIncomeTotal.value = 0
+      saleIncomeCount.value = 0
+    }
+  }
+
   const submitLedgerTransaction = async () => {
     if (!ledgerForm.value.ledger_account_id) {
       ledgerSubmitError.value = 'Please choose a ledger account before saving.'
@@ -448,6 +479,7 @@ export const useAnimalTransactions = (animalUuid: string, trackingType: 'individ
   onMounted(() => {
     fetchLedgerAccounts()
     fetchLedgerTransactions()
+    fetchSaleIncome()
   })
 
   return {
@@ -469,6 +501,9 @@ export const useAnimalTransactions = (animalUuid: string, trackingType: 'individ
     computedUnitCostDisplay,
     totalRecordedAmount,
     moneyInTotal,
+    ledgerRevenueTotal,
+    saleIncomeTotal,
+    saleIncomeCount,
     moneyOutTotal,
     netProfit,
     recoveryRateLabel,

@@ -43,6 +43,7 @@
           </div>
           <div class="flex gap-2">
             <button
+              v-if="hasHarvests"
               class="inline-flex items-center gap-2 rounded-md border border-green-500 bg-white px-3 py-2 text-sm font-medium text-green-600 transition-colors hover:bg-green-50"
               @click="showSaleModal = true"
             >
@@ -124,12 +125,12 @@
         <div v-if="activeTab === 'overview'">
         <div class="flex flex-col gap-4 border-b border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 class="text-lg font-semibold text-gray-900">Ledger Transactions</h2>
-            <p class="mt-0.5 text-sm text-gray-500">Record money in, money out, assets, liabilities, and owner investment for this planting.</p>
+            <h2 class="text-lg font-semibold text-gray-900">Costs &amp; Money</h2>
+            <p class="mt-0.5 text-sm text-gray-500">Record what you spent on this planting — seeds, fertiliser, labour. Money from selling produce is recorded through <span class="font-medium text-gray-700">Sell Produce</span>.</p>
           </div>
           <button @click="openLedgerModal" class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
             <Plus class="h-4 w-4" />
-            Record Transaction
+            Record Cost
           </button>
         </div>
 
@@ -177,8 +178,8 @@
                   </tr>
                   <tr v-if="!ledgerTransactions.length">
                     <td colspan="9" class="px-6 py-10 text-center text-sm text-gray-500">
-                      No ledger transactions recorded yet.
-                      <button @click="openLedgerModal" class="ml-1 text-green-600 underline hover:no-underline">Record the first transaction.</button>
+                      No costs recorded yet.
+                      <button @click="openLedgerModal" class="ml-1 text-green-600 underline hover:no-underline">Record the first cost.</button>
                     </td>
                   </tr>
                 </tbody>
@@ -244,7 +245,7 @@
         </div>
 
         <div v-else class="p-6">
-          <Harvest :crop-name="planting.crop?.name ?? 'Harvest'" :planting-uuid="planting.uuid" />
+          <Harvest :crop-name="planting.crop?.name ?? 'Harvest'" :planting-uuid="planting.uuid" :farm-uuid="planting.farm?.uuid ?? ''" @harvest-saved="fetchHarvests" />
         </div>
       </div>
     </template>
@@ -256,7 +257,7 @@
           <div class="relative w-full max-w-2xl rounded-lg bg-white shadow-xl">
             <div class="flex items-center justify-between border-b border-gray-200 p-4">
               <div>
-                <h3 class="text-lg font-semibold text-gray-900">Create New Transaction</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Record a Cost</h3>
               </div>
               <button @click="closeLedgerModal" class="text-gray-400 hover:text-gray-600">
                 <X class="h-5 w-5" />
@@ -265,10 +266,10 @@
 
             <form @submit.prevent="submitLedgerTransaction" class="space-y-5 p-4">
               <div>
-                <Label class="mb-2 block text-sm font-medium text-gray-700">Account Type</Label>
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <Label class="mb-2 block text-sm font-medium text-gray-700">What happened?</Label>
+                <div class="grid grid-cols-2 gap-3">
                   <button
-                    v-for="type in ledgerTypeOptions"
+                    v-for="type in primaryLedgerTypeOptions"
                     :key="type.value"
                     type="button"
                     @click="selectLedgerType(type.value)"
@@ -278,22 +279,48 @@
                     ]"
                   >
                     <div class="text-2xl">{{ type.emoji }}</div>
-                    <p class="mt-2 text-sm font-semibold text-gray-900">{{ type.farmerText }}</p>
-                    <p class="mt-1 text-xs text-gray-500">{{ type.label }}</p>
+                    <p class="mt-2 text-sm font-semibold text-gray-900">{{ type.label }}</p>
+                    <p class="mt-1 text-xs text-gray-500">{{ type.farmerText }}</p>
+                  </button>
+                </div>
+                <p v-if="ledgerForm.type === 'revenue'" class="mt-2 rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-900">
+                  Selling produce? Use <span class="font-semibold">Sell Produce</span> instead — it keeps the buyer, quantity and money owed together.
+                </p>
+                <button
+                  type="button"
+                  class="mt-2 text-xs font-medium text-gray-500 underline hover:text-gray-700"
+                  @click="showAdvancedTypes = !showAdvancedTypes"
+                >
+                  {{ showAdvancedTypes ? 'Hide extra options' : 'More options — things you own, loans, owner money' }}
+                </button>
+                <div v-if="showAdvancedTypes" class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <button
+                    v-for="type in advancedLedgerTypeOptions"
+                    :key="type.value"
+                    type="button"
+                    @click="selectLedgerType(type.value)"
+                    :class="[
+                      'rounded-lg border px-4 py-3 text-left transition-colors',
+                      ledgerForm.type === type.value ? type.selectedClass : 'border-gray-200 bg-white hover:border-gray-300'
+                    ]"
+                  >
+                    <div class="text-2xl">{{ type.emoji }}</div>
+                    <p class="mt-2 text-sm font-semibold text-gray-900">{{ type.label }}</p>
+                    <p class="mt-1 text-xs text-gray-500">{{ type.farmerText }}</p>
                   </button>
                 </div>
               </div>
 
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <Label for="ledger_account_search" class="mb-1 block text-sm font-medium text-gray-700">Ledger Account</Label>
+                  <Label for="ledger_account_search" class="mb-1 block text-sm font-medium text-gray-700">Category</Label>
                   <div class="relative">
                     <Input
                       id="ledger_account_search"
                       v-model="ledgerAccountSearch"
                       type="text"
                       autocomplete="off"
-                      :placeholder="`Search ${ledgerTypeConfig(ledgerForm.type).label.toLowerCase()} account`"
+                      :placeholder="`Search ${ledgerTypeConfig(ledgerForm.type).label} categories`"
                       class="w-full"
                       @focus="showLedgerAccountResults = true"
                       @input="handleLedgerAccountSearch"
@@ -404,6 +431,7 @@
 
 <script lang="ts" setup>
 import { Banknote, ChevronLeft, Sprout, Pencil, Trash2, Plus, X } from 'lucide-vue-next'
+import { advancedLedgerTypeOptions, isAdvancedLedgerType, ledgerTypeOptions, primaryLedgerTypeOptions } from '../../../../../composables/useAnimalTransactions'
 
 definePageMeta({
   middleware: ['auth'],
@@ -490,61 +518,22 @@ const router = useRouter()
 
 const plantingUuid = computed(() => route.params.uuid as string)
 
-const ledgerTypeOptions = [
-  {
-    value: 'revenue' as const,
-    label: 'Revenue',
-    farmerText: 'Money came in',
-    emoji: '💰',
-    selectedClass: 'border-green-500 bg-green-50',
-    pillClass: 'bg-green-100 text-green-800',
-    textClass: 'text-green-700'
-  },
-  {
-    value: 'expense' as const,
-    label: 'Expense',
-    farmerText: 'Money went out',
-    emoji: '🛒',
-    selectedClass: 'border-red-500 bg-red-50',
-    pillClass: 'bg-red-100 text-red-800',
-    textClass: 'text-red-700'
-  },
-  {
-    value: 'asset' as const,
-    label: 'Asset',
-    farmerText: 'I own something',
-    emoji: '🚜',
-    selectedClass: 'border-blue-500 bg-blue-50',
-    pillClass: 'bg-blue-100 text-blue-800',
-    textClass: 'text-blue-700'
-  },
-  {
-    value: 'liability' as const,
-    label: 'Liability',
-    farmerText: 'I owe someone',
-    emoji: '🏦',
-    selectedClass: 'border-amber-500 bg-amber-50',
-    pillClass: 'bg-amber-100 text-amber-800',
-    textClass: 'text-amber-700'
-  },
-  {
-    value: 'equity' as const,
-    label: 'Equity',
-    farmerText: 'Farm capital / owner investment',
-    emoji: '🌾',
-    selectedClass: 'border-purple-500 bg-purple-50',
-    pillClass: 'bg-purple-100 text-purple-800',
-    textClass: 'text-purple-700'
-  }
-]
-
+// Shared with the animal transactions tab so wording stays consistent.
 const ledgerTypeConfig = (type: LedgerType) => {
   const config = ledgerTypeOptions.find((option) => option.value === type)
   return config ?? ledgerTypeOptions[1]!
 }
 
+// Everyday recording is just Money In / Money Out; the accounting-flavored
+// types stay reachable but out of the way.
+const showAdvancedTypes = ref(false)
+
 const plantingResource = useOfflineEntity<Planting & Record<string, any>>('planting')
 const transactionResource = useOfflineEntity<LedgerTransactionListItem & Record<string, any>>('transaction', {
+  model: 'planting',
+  parentUuid: route.params.uuid as string
+})
+const harvestResource = useOfflineEntity<{ uuid?: string; productionable_uuid?: string | null; productionable?: { uuid?: string | null } | null }>('production', {
   model: 'planting',
   parentUuid: route.params.uuid as string
 })
@@ -596,6 +585,10 @@ const defaultLedgerForm = () => ({
 })
 
 const ledgerForm = ref(defaultLedgerForm())
+
+watch(() => ledgerForm.value.type, (type) => {
+  if (isAdvancedLedgerType(type)) showAdvancedTypes.value = true
+})
 
 const filteredLedgerAccounts = computed(() =>
   ledgerAccounts.value.filter((account) => account.type === ledgerForm.value.type)
@@ -941,6 +934,15 @@ const fetchLedgerAccounts = async () => {
 
 const fetchLedgerTransactions = () => transactionResource.fetch()
 
+const fetchHarvests = () => harvestResource.fetch()
+
+const hasHarvests = computed(() =>
+  harvestResource.items.value.some((record) => {
+    const linkedUuid = record.productionable_uuid || record.productionable?.uuid || null
+    return linkedUuid ? linkedUuid === plantingUuid.value : true
+  })
+)
+
 const fetchPlanting = async () => {
   loading.value = true
   error.value = null
@@ -967,5 +969,6 @@ onMounted(() => {
   fetchPlanting()
   fetchLedgerAccounts()
   fetchLedgerTransactions()
+  fetchHarvests()
 })
 </script>

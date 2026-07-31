@@ -168,6 +168,36 @@
       </div>
     </div>
 
+    <!-- Upcoming Births -->
+    <div v-if="upcomingBirths.length" class="bg-white rounded-xl border border-gray-200">
+      <div class="flex items-center justify-between p-5 pb-3">
+        <h2 class="text-base font-semibold text-gray-900">Upcoming &amp; Overdue Births</h2>
+        <span class="text-xs font-medium text-pink-600 bg-pink-50 rounded-full px-2 py-0.5">{{ upcomingBirths.length }}</span>
+      </div>
+      <div class="divide-y divide-gray-100">
+        <NuxtLink
+          v-for="b in upcomingBirths.slice(0, 8)"
+          :key="b.uuid"
+          :to="b.dam?.uuid ? `/admin/livestock/animal/${b.dam.uuid}` : '/admin/livestock'"
+          class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50"
+        >
+          <div class="h-9 w-9 rounded-lg bg-pink-50 flex items-center justify-center shrink-0">
+            <Baby class="h-5 w-5 text-pink-500" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">
+              {{ b.dam?.name || b.dam?.tag_number || 'Animal' }}
+              <span class="font-normal text-gray-400">· {{ b.dam?.animal_type?.name || 'livestock' }}</span>
+            </p>
+            <p class="text-xs text-gray-400">Expected {{ b.expected_birth_date_human || b.expected_birth_date }}</p>
+          </div>
+          <span class="text-xs font-semibold rounded-full px-2 py-0.5 shrink-0" :class="birthDueClass(b)">
+            {{ birthDueLabel(b) }}
+          </span>
+        </NuxtLink>
+      </div>
+    </div>
+
     <!-- Bottom Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -286,6 +316,7 @@ import {
   Warehouse,
   ListTodo,
   Banknote,
+  Baby,
   Leaf,
   Timer,
   CircleCheck,
@@ -305,6 +336,32 @@ const plantings = ref([])
 const tasks = ref([])
 const weekSalesTotal = ref(null)
 const showSaleModal = ref(false)
+const upcomingBirths = ref([])
+
+const birthDaysUntil = (b) => {
+  if (!b.expected_birth_date) return null
+  const target = new Date(`${b.expected_birth_date}T00:00:00`)
+  if (Number.isNaN(target.getTime())) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  return Math.round((target.getTime() - today.getTime()) / 86400000)
+}
+
+const birthDueLabel = (b) => {
+  const d = birthDaysUntil(b)
+  if (d === null) return ''
+  if (d < 0) return `overdue ${Math.abs(d)}d`
+  if (d === 0) return 'due today'
+  if (d === 1) return 'tomorrow'
+  return `in ${d}d`
+}
+
+const birthDueClass = (b) => {
+  const d = birthDaysUntil(b)
+  if (d === null) return 'bg-gray-100 text-gray-600'
+  if (d < 0) return 'bg-red-100 text-red-700'
+  if (d <= 7) return 'bg-amber-100 text-amber-700'
+  return 'bg-gray-100 text-gray-600'
+}
 
 const greeting = computed(() => {
   const h = new Date().getHours()
@@ -443,15 +500,22 @@ async function fetchDashboardData() {
     loading.value = false
   }
 
-  // Separate fetch: the summary endpoint returns an object, not a list,
-  // so it can't go through the reference cache like the others.
+  // Separate fetches: these endpoints return objects/lists that don't fit
+  // the reference cache like the others.
+  const { $apiFetch } = useNuxtApp()
   try {
     const from = (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().split('T')[0] })()
-    const { $apiFetch } = useNuxtApp()
     const res = await $apiFetch(`/api/v1/farms/farm/sales/summary?from=${from}`)
     weekSalesTotal.value = res?.data?.total_amount ?? null
   } catch {
     weekSalesTotal.value = null
+  }
+
+  try {
+    const res = await $apiFetch('/api/v1/farms/farm/animals/breedings/calendar')
+    upcomingBirths.value = res?.data ?? []
+  } catch {
+    upcomingBirths.value = []
   }
 }
 

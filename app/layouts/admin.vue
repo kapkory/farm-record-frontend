@@ -264,16 +264,42 @@
             >
               Livestock
             </NuxtLink>
-            <NuxtLink 
+            <NuxtLink
+              to="/admin/settings/accounts"
+              :class="{'bg-green-50 text-green-600': $route.path === '/admin/settings/accounts'}"
+              class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
+            >
+              Money Categories
+            </NuxtLink>
+            <NuxtLink
+              to="/admin/settings/billing"
+              :class="{'bg-green-50 text-green-600': $route.path === '/admin/settings/billing'}"
+              class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
+            >
+              Billing &amp; Plan
+            </NuxtLink>
+            <NuxtLink
               to="/admin/settings/system"
               class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
             >
               System Settings
             </NuxtLink>
-           
+
           </div>
         </div>
 
+        <!-- Platform admin (superadmins only) -->
+        <NuxtLink
+          v-if="authStore.isSuperAdmin"
+          to="/admin/super/billing"
+          class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition-colors"
+          :class="{'bg-purple-50 text-purple-600': $route.path.startsWith('/admin/super')}"
+        >
+          <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+          </svg>
+          <span class="font-medium">Platform Billing</span>
+        </NuxtLink>
 
       </nav>
     </aside>
@@ -419,6 +445,16 @@
         </div>
       </div>
 
+      <!-- Subscription nudge (soft banner, never blocks) -->
+      <div
+        v-if="subscriptionBanner"
+        class="px-4 sm:px-6 lg:px-8 py-2 text-sm border-b"
+        :class="subscriptionBanner.tone === 'warn' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-red-50 border-red-200 text-red-800'"
+      >
+        {{ subscriptionBanner.message }}
+        <NuxtLink to="/admin/settings/billing" class="ml-1 font-semibold underline hover:no-underline">View billing</NuxtLink>
+      </div>
+
       <!-- Page Content -->
       <main class="flex-1 p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-0">
         <slot />
@@ -459,6 +495,25 @@ const openDropdowns = ref({
 const toggleDropdown = (menu) => {
   openDropdowns.value[menu] = !openDropdowns.value[menu]
 }
+
+// Soft subscription nudge: trial ending within 5 days, or payment overdue.
+// Fetched once per session; silently absent offline or before subscribing.
+const subscriptionBanner = ref(null)
+
+onMounted(async () => {
+  try {
+    const { $apiFetch } = useNuxtApp()
+    const res = await $apiFetch('/api/v1/billing/subscription')
+    const sub = res?.data
+    if (!sub) return
+    if (sub.effective_status === 'past_due') {
+      subscriptionBanner.value = { tone: 'alert', message: 'Your Farmconsul plan needs a payment to stay active. Your records are safe.' }
+    } else if (sub.effective_status === 'trialing' && sub.days_remaining !== null && sub.days_remaining <= 5) {
+      const days = Math.max(sub.days_remaining, 0)
+      subscriptionBanner.value = { tone: 'warn', message: days === 0 ? 'Your free trial ends today.' : `Your free trial ends in ${days} day${days === 1 ? '' : 's'}.` }
+    }
+  } catch { /* banner is best-effort */ }
+})
 
 // User info from auth store
 const userName = computed(() => authStore.currentFarmer?.name || 'User')

@@ -100,13 +100,25 @@
                         <span class="block text-sm font-medium text-gray-900">{{ type.name }}</span>
                         <span v-if="type.description" class="block text-xs text-gray-500">{{ type.description }}</span>
                       </button>
-                      <div v-if="!searchedTreatmentTypes.length" class="px-3 py-2 text-sm text-gray-500">
-                        No matching treatment types found.
+                      <div v-if="!searchedTreatmentTypes.length" class="px-3 py-2">
+                        <p class="text-sm text-gray-500">No matching treatment types found.</p>
+                        <button
+                          v-if="treatmentTypeSearch.trim() && isOnline"
+                          type="button"
+                          :disabled="addingTreatmentType"
+                          @click="addTreatmentTypeInline"
+                          class="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-green-600 hover:text-green-700 disabled:opacity-50"
+                        >
+                          <Plus class="h-3.5 w-3.5" />
+                          {{ addingTreatmentType ? 'Adding…' : `Add "${treatmentTypeSearch.trim()}" as a new treatment type` }}
+                        </button>
+                        <p v-else-if="treatmentTypeSearch.trim()" class="mt-1 text-xs text-gray-400">Connect to the internet to add a new treatment type.</p>
                       </div>
                     </div>
                   </div>
                   <p v-if="formErrors.treatment_type_id" class="mt-1 text-xs text-red-600">{{ formErrors.treatment_type_id }}</p>
                   <p v-if="selectedTreatmentType?.description" class="mt-1 text-xs text-gray-500">{{ selectedTreatmentType.description }}</p>
+                  <p v-if="addTreatmentTypeError" class="mt-1 text-xs text-red-600">{{ addTreatmentTypeError }}</p>
                 </div>
 
                 <div>
@@ -218,6 +230,8 @@ const resource = useOfflineEntity<TreatmentRecord & Record<string, any>>('treatm
   parentUuid: plantingUuidValue.value
 })
 const { getReference } = useReferenceData()
+const { $apiFetch } = useNuxtApp()
+const { isOnline } = useOffline()
 
 const today = () => new Date().toISOString().split('T')[0] || ''
 
@@ -248,6 +262,8 @@ const errorList = ref<string[]>([])
 const treatmentForm = ref(createDefaultForm())
 const treatmentTypeSearch = ref('')
 const showTreatmentTypeResults = ref(false)
+const addingTreatmentType = ref(false)
+const addTreatmentTypeError = ref<string | null>(null)
 
 const mapTypeName = (record: TreatmentRecord) => {
   if (record.treatment_type_name) return record.treatment_type_name
@@ -297,6 +313,7 @@ const openTreatmentModal = () => {
   resetForm()
   treatmentTypeSearch.value = ''
   showTreatmentTypeResults.value = false
+  addTreatmentTypeError.value = null
   showAddTreatmentModal.value = true
 }
 
@@ -306,11 +323,13 @@ const closeTreatmentModal = () => {
   formErrors.value = {}
   errorList.value = []
   showTreatmentTypeResults.value = false
+  addTreatmentTypeError.value = null
 }
 
 const handleTreatmentTypeSearch = () => {
   treatmentForm.value.treatment_type_id = ''
   showTreatmentTypeResults.value = true
+  addTreatmentTypeError.value = null
 }
 
 const selectTreatmentType = (type: TreatmentTypeOption) => {
@@ -363,6 +382,36 @@ const fetchTreatmentTypes = async () => {
 }
 
 const fetchTreatments = () => resource.fetch()
+
+const addTreatmentTypeInline = async () => {
+  const name = treatmentTypeSearch.value.trim()
+  if (!name || addingTreatmentType.value || !isOnline.value) return
+
+  addingTreatmentType.value = true
+  addTreatmentTypeError.value = null
+
+  try {
+    await $apiFetch('/sanctum/csrf-cookie')
+    const response = await $apiFetch<any>('/api/v1/settings/crops/treatment-types', {
+      method: 'POST',
+      body: { name, type: 'crop', description: null, status: 'active' }
+    })
+
+    await fetchTreatmentTypes()
+
+    const created = response?.data
+    const match = created?.id != null
+      ? treatmentTypes.value.find((type) => String(type.id) === String(created.id))
+      : treatmentTypes.value.find((type) => type.name === name)
+    if (match) selectTreatmentType(match)
+  } catch (err: any) {
+    const data = err?.data ?? err?.response?._data
+    addTreatmentTypeError.value = data?.message || 'Failed to add treatment type'
+    console.error('Failed to add treatment type:', err)
+  } finally {
+    addingTreatmentType.value = false
+  }
+}
 
 const saveTreatment = async () => {
   if (!plantingUuidValue.value) return

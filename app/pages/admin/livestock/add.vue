@@ -192,6 +192,33 @@
             <Label for="i_dob" class="block text-sm font-semibold text-gray-700">Date of Birth</Label>
             <Input id="i_dob" v-model="individual.date_of_birth" type="date" class="w-full" />
           </div>
+
+          <!-- Mother (dam) -->
+          <div class="space-y-1">
+            <Label for="i_dam" class="block text-sm font-semibold text-gray-700">Mother <span class="font-normal text-gray-400">(optional)</span></Label>
+            <select
+              id="i_dam"
+              v-model="individual.dam_uuid"
+              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              <option value="">Not recorded</option>
+              <option v-for="a in damChoices" :key="a.uuid" :value="a.uuid">{{ animalLabel(a) }}</option>
+            </select>
+          </div>
+
+          <!-- Father (sire) -->
+          <div class="space-y-1">
+            <Label for="i_sire" class="block text-sm font-semibold text-gray-700">Father <span class="font-normal text-gray-400">(optional)</span></Label>
+            <select
+              id="i_sire"
+              v-model="individual.sire_uuid"
+              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              <option value="">Not recorded</option>
+              <option v-for="a in sireChoices" :key="a.uuid" :value="a.uuid">{{ animalLabel(a) }}</option>
+            </select>
+            <p class="text-xs text-gray-400">Recording parents lets the app warn about inbreeding risk when you breed this animal.</p>
+          </div>
         </div>
       </div>
 
@@ -571,6 +598,8 @@ const individual = ref({
   name: '',
   gender: 'unknown' as 'male' | 'female' | 'unknown',
   date_of_birth: '',
+  dam_uuid: '',
+  sire_uuid: '',
   acquisition_date: new Date().toISOString().split('T')[0],
   acquisition_type: 'born' as 'born' | 'purchased' | 'donated' | 'transferred',
   purchase_price: '',
@@ -667,6 +696,8 @@ const submitIndividual = async () => {
       name: individual.value.name || null,
       gender: individual.value.gender,
       date_of_birth: individual.value.date_of_birth || null,
+      dam_uuid: individual.value.dam_uuid || null,
+      sire_uuid: individual.value.sire_uuid || null,
       acquisition_date: individual.value.acquisition_date || null,
       acquisition_type: individual.value.acquisition_type,
       purchase_price: individual.value.purchase_price ? Number(individual.value.purchase_price) : null,
@@ -789,11 +820,28 @@ const fetchTreatmentPlans = async () => {
   }
 }
 
+// Existing individual animals, for optional parent (mother/father) pickers.
+const existingAnimals = ref<Array<{ uuid: string; name: string | null; tag_number: string | null; gender: string; tracking_type: string }>>([])
+const fetchExistingAnimals = async () => {
+  try {
+    const { data } = await getReference<any>('livestock_list')
+    existingAnimals.value = (data ?? []).filter((a: any) => a.tracking_type === 'individual')
+  } catch (err) {
+    console.error('Failed to load animals for parent selection:', err)
+  }
+}
+
+const damChoices = computed(() => existingAnimals.value.filter(a => a.gender === 'female'))
+const sireChoices = computed(() => existingAnimals.value.filter(a => a.gender === 'male'))
+const animalLabel = (a: { name: string | null; tag_number: string | null }) =>
+  a.name || a.tag_number || 'Unnamed animal'
+
 onMounted(() => {
   fetchFarms()
   fetchAnimalTypes()
   fetchBreeds()
   fetchAnimalGroups()
   fetchTreatmentPlans()
+  fetchExistingAnimals()
 })
 </script>

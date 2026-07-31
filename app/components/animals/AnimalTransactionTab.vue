@@ -2,12 +2,12 @@
   <div>
     <div class="flex flex-col gap-4 border-b border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h2 class="text-lg font-semibold text-gray-900">Ledger Transactions</h2>
-        <p class="mt-0.5 text-sm text-gray-500">Record money in, money out, assets, liabilities, and owner investment for this animal.</p>
+        <h2 class="text-lg font-semibold text-gray-900">Costs &amp; Money</h2>
+        <p class="mt-0.5 text-sm text-gray-500">Record what you spent on this animal — feed, medicine, labour. Money from selling is recorded through <span class="font-medium text-gray-700">Record Sale</span>.</p>
       </div>
       <button @click="openLedgerModal" class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
         <Plus class="h-4 w-4" />
-        Record Transaction
+        Record Cost
       </button>
     </div>
 
@@ -55,8 +55,8 @@
               </tr>
               <tr v-if="!ledgerTransactions.length">
                 <td colspan="9" class="px-6 py-10 text-center text-sm text-gray-500">
-                  No ledger transactions recorded yet.
-                  <button @click="openLedgerModal" class="ml-1 text-green-600 underline hover:no-underline">Record the first transaction.</button>
+                  No costs recorded yet.
+                  <button @click="openLedgerModal" class="ml-1 text-green-600 underline hover:no-underline">Record the first cost.</button>
                 </td>
               </tr>
             </tbody>
@@ -82,7 +82,10 @@
           <div class="rounded-lg border border-green-100 bg-green-50 px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-wide text-green-700">Money In</p>
             <p class="mt-1 text-2xl font-bold text-gray-900">{{ formatCurrency(moneyInTotal) }}</p>
-            <p class="mt-1 text-sm text-green-800">Sales and other income recorded for this animal.</p>
+            <p v-if="saleIncomeCount > 0" class="mt-1 text-sm text-green-800">
+              Includes {{ formatCurrency(saleIncomeTotal) }} from {{ saleIncomeCount }} sale{{ saleIncomeCount === 1 ? '' : 's' }} recorded through <span class="font-semibold">Record Sale</span>.
+            </p>
+            <p v-else class="mt-1 text-sm text-green-800">Sales and other income recorded for this animal.</p>
           </div>
 
           <div class="rounded-lg border border-red-100 bg-red-50 px-4 py-4">
@@ -104,7 +107,7 @@
           </div>
 
           <div class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-            This summary only uses <span class="font-semibold">Money In</span> and <span class="font-semibold">Money Out</span> to show profit. Assets, loans, and owner capital are still recorded here, but they are not counted as profit.
+            Profit here compares costs recorded on this tab against income — both sales recorded through <span class="font-semibold">Record Sale</span> for this animal and any income entered here. Loans and owner money are not counted.
           </div>
         </div>
       </aside>
@@ -116,7 +119,7 @@
         <div class="flex min-h-full items-center justify-center p-4">
           <div class="relative w-full max-w-2xl rounded-lg bg-white shadow-xl">
             <div class="flex items-center justify-between border-b border-gray-200 p-4">
-              <h3 class="text-lg font-semibold text-gray-900">Create New Transaction</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Record a Cost</h3>
               <button @click="closeLedgerModal" class="text-gray-400 hover:text-gray-600">
                 <X class="h-5 w-5" />
               </button>
@@ -124,10 +127,10 @@
 
             <form @submit.prevent="submitLedgerTransaction" class="space-y-5 p-4">
               <div>
-                <Label class="mb-2 block text-sm font-medium text-gray-700">Account Type</Label>
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <Label class="mb-2 block text-sm font-medium text-gray-700">What happened?</Label>
+                <div class="grid grid-cols-2 gap-3">
                   <button
-                    v-for="type in ledgerTypeOptions"
+                    v-for="type in primaryLedgerTypeOptions"
                     :key="type.value"
                     type="button"
                     @click="selectLedgerType(type.value)"
@@ -137,22 +140,48 @@
                     ]"
                   >
                     <div class="text-2xl">{{ type.emoji }}</div>
-                    <p class="mt-2 text-sm font-semibold text-gray-900">{{ type.farmerText }}</p>
-                    <p class="mt-1 text-xs text-gray-500">{{ type.label }}</p>
+                    <p class="mt-2 text-sm font-semibold text-gray-900">{{ type.label }}</p>
+                    <p class="mt-1 text-xs text-gray-500">{{ type.farmerText }}</p>
+                  </button>
+                </div>
+                <p v-if="ledgerForm.type === 'revenue'" class="mt-2 rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-900">
+                  Selling milk, honey or an animal? Use <span class="font-semibold">Record Sale</span> instead — it keeps the buyer, quantity and money owed together.
+                </p>
+                <button
+                  type="button"
+                  class="mt-2 text-xs font-medium text-gray-500 underline hover:text-gray-700"
+                  @click="showAdvancedTypes = !showAdvancedTypes"
+                >
+                  {{ showAdvancedTypes ? 'Hide extra options' : 'More options — things you own, loans, owner money' }}
+                </button>
+                <div v-if="showAdvancedTypes" class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <button
+                    v-for="type in advancedLedgerTypeOptions"
+                    :key="type.value"
+                    type="button"
+                    @click="selectLedgerType(type.value)"
+                    :class="[
+                      'rounded-lg border px-4 py-3 text-left transition-colors',
+                      ledgerForm.type === type.value ? type.selectedClass : 'border-gray-200 bg-white hover:border-gray-300'
+                    ]"
+                  >
+                    <div class="text-2xl">{{ type.emoji }}</div>
+                    <p class="mt-2 text-sm font-semibold text-gray-900">{{ type.label }}</p>
+                    <p class="mt-1 text-xs text-gray-500">{{ type.farmerText }}</p>
                   </button>
                 </div>
               </div>
 
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <Label for="ledger_account_search" class="mb-1 block text-sm font-medium text-gray-700">Ledger Account</Label>
+                  <Label for="ledger_account_search" class="mb-1 block text-sm font-medium text-gray-700">Category</Label>
                   <div class="relative">
                     <Input
                       id="ledger_account_search"
                       v-model="ledgerAccountSearch"
                       type="text"
                       autocomplete="off"
-                      :placeholder="`Search ${ledgerTypeConfig(ledgerForm.type).label.toLowerCase()} account`"
+                      :placeholder="`Search ${ledgerTypeConfig(ledgerForm.type).label} categories`"
                       class="w-full"
                       @focus="showLedgerAccountResults = true"
                       @input="handleLedgerAccountSearch"
@@ -252,6 +281,7 @@
 
 <script lang="ts" setup>
 import { Plus, X } from 'lucide-vue-next'
+import { advancedLedgerTypeOptions, isAdvancedLedgerType, primaryLedgerTypeOptions } from '../../composables/useAnimalTransactions'
 
 const props = defineProps<{ animalUuid: string; trackingType?: 'individual' | 'group' }>()
 
@@ -272,6 +302,8 @@ const {
   selectedLedgerAccount,
   computedUnitCostDisplay,
   moneyInTotal,
+  saleIncomeTotal,
+  saleIncomeCount,
   moneyOutTotal,
   netProfit,
   recoveryRateLabel,
@@ -291,4 +323,11 @@ const {
   closeLedgerModal,
   submitLedgerTransaction,
 } = useAnimalTransactions(props.animalUuid, props.trackingType ?? 'individual')
+
+// Everyday recording is just Money In / Money Out; the accounting-flavored
+// types stay reachable but out of the way.
+const showAdvancedTypes = ref(false)
+watch(() => ledgerForm.value.type, (type) => {
+  if (isAdvancedLedgerType(type)) showAdvancedTypes.value = true
+})
 </script>

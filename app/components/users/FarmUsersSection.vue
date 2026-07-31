@@ -153,11 +153,53 @@
         </div>
       </div>
     </Teleport>
+
+    <Teleport to="body">
+      <div v-if="showCreatedUserModal" class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="fixed inset-0 bg-black bg-opacity-50" @click="closeCreatedUserModal"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+          <div class="relative w-full max-w-md rounded-lg bg-white shadow-xl">
+            <div class="flex items-center justify-between border-b border-gray-200 p-4">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900">User Created</h3>
+                <p class="mt-1 text-sm text-gray-500">Share this temporary password with {{ createdUserEmail }}. It won't be shown again.</p>
+              </div>
+              <button @click="closeCreatedUserModal" class="text-gray-400 hover:text-gray-600">
+                <X class="h-5 w-5" />
+              </button>
+            </div>
+
+            <div class="space-y-4 p-4">
+              <div>
+                <Label class="mb-1 block text-sm font-medium text-gray-700">Temporary Password</Label>
+                <div class="flex items-center gap-2">
+                  <Input :model-value="createdUserPassword" type="text" readonly class="w-full font-mono" />
+                  <button
+                    type="button"
+                    @click="copyCreatedPassword"
+                    class="inline-flex flex-shrink-0 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <Check v-if="passwordCopied" class="h-4 w-4 text-green-600" />
+                    <Copy v-else class="h-4 w-4" />
+                    {{ passwordCopied ? 'Copied' : 'Copy' }}
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500">They'll be asked to set their own password the first time they log in.</p>
+            </div>
+
+            <div class="flex justify-end border-t border-gray-200 p-4">
+              <Button type="button" @click="closeCreatedUserModal">Done</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Plus, Search, X } from 'lucide-vue-next'
+import { Check, Copy, Plus, Search, X } from 'lucide-vue-next'
 
 type UserRole = 'owner' | 'manager' | 'staff'
 type UserFormErrorKey = 'name' | 'email' | 'role' | 'phone'
@@ -187,6 +229,11 @@ const submitting = ref(false)
 const userSubmitError = ref<string | null>(null)
 const userFormErrors = ref<UserValidationErrors>({})
 const userErrorList = ref<string[]>([])
+
+const showCreatedUserModal = ref(false)
+const createdUserEmail = ref('')
+const createdUserPassword = ref('')
+const passwordCopied = ref(false)
 
 const defaultUserForm = () => ({
   name: '',
@@ -298,13 +345,21 @@ const submitUser = async () => {
 
   try {
     await $apiFetch('/sanctum/csrf-cookie')
-    await $apiFetch('/api/v1/farms/farm/users', {
+    const response = await $apiFetch<any>('/api/v1/farms/farm/users', {
       method: 'POST',
       body: payload
     })
 
     await fetchUsers()
     closeUserModal()
+
+    const temporaryPassword = response?.data?.temporary_password
+    if (temporaryPassword) {
+      createdUserEmail.value = response?.data?.email ?? payload.email
+      createdUserPassword.value = temporaryPassword
+      passwordCopied.value = false
+      showCreatedUserModal.value = true
+    }
   } catch (err: unknown) {
     const responseData = typeof err === 'object' && err !== null && 'data' in err
       ? (err as { data?: { message?: string; errors?: Record<string, string[] | string> } }).data
@@ -316,6 +371,23 @@ const submitUser = async () => {
   } finally {
     submitting.value = false
   }
+}
+
+const copyCreatedPassword = async () => {
+  try {
+    await navigator.clipboard.writeText(createdUserPassword.value)
+    passwordCopied.value = true
+    setTimeout(() => { passwordCopied.value = false }, 2000)
+  } catch (err) {
+    console.error('Failed to copy password:', err)
+  }
+}
+
+const closeCreatedUserModal = () => {
+  showCreatedUserModal.value = false
+  createdUserEmail.value = ''
+  createdUserPassword.value = ''
+  passwordCopied.value = false
 }
 
 onMounted(() => {

@@ -1,3 +1,5 @@
+const CHANGE_PASSWORD_PATH = '/admin/change-password';
+
 export default defineNuxtRouteMiddleware((to, from) => {
   const authStore = useAuthStore();
 
@@ -6,6 +8,12 @@ export default defineNuxtRouteMiddleware((to, from) => {
     return;
   }
 
+  const enforcePasswordChange = () => {
+    if (authStore.farmer?.must_change_password && to.path !== CHANGE_PASSWORD_PATH) {
+      return navigateTo(CHANGE_PASSWORD_PATH);
+    }
+  };
+
   // If we have not initialized yet, try to restore session before redirecting
   if (!authStore.isInitialized && import.meta.client) {
     return authStore.initialize().then(() => {
@@ -13,6 +21,7 @@ export default defineNuxtRouteMiddleware((to, from) => {
         console.log('User not authenticated after initialization, redirecting to login.');
         return navigateTo('/login');
       }
+      return enforcePasswordChange();
     });
   }
 
@@ -21,4 +30,6 @@ export default defineNuxtRouteMiddleware((to, from) => {
     console.log('User not authenticated, redirecting to login.');
     return navigateTo('/login');
   }
+
+  return enforcePasswordChange();
 });

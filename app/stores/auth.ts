@@ -13,6 +13,7 @@ interface RegisterCredentials {
   farm_name: string;
   farm_type: string;
   password: string;
+  plan_uuid?: string;
 }
 
 interface ValidationErrors {
@@ -40,6 +41,7 @@ export const useAuthStore = defineStore('authStore', () => {
   // Computed
   const currentFarmer = computed(() => farmer.value);
   const isLoggedIn = computed(() => isAuthenticated.value);
+  const isSuperAdmin = computed(() => !!farmer.value?.is_superadmin);
   const authError = computed(() => error.value);
   const authLoading = computed(() => isLoading.value);
 
@@ -220,6 +222,7 @@ export const useAuthStore = defineStore('authStore', () => {
           farm_name: credentials.farm_name,
           farm_type: credentials.farm_type,
           password: credentials.password,
+          plan_uuid: credentials.plan_uuid ?? null,
         },
       });
 
@@ -273,6 +276,7 @@ export const useAuthStore = defineStore('authStore', () => {
     // Computed
     currentFarmer,
     isLoggedIn,
+    isSuperAdmin,
     authError,
     authLoading,
     isInitialized,

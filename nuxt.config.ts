@@ -11,6 +11,7 @@ export default defineNuxtConfig({
     '/login': { prerender: true },
     '/register': { prerender: true },
     '/pricing': { prerender: true },
+    '/plans': { prerender: true },
     '/forgot-password': { prerender: true },
     // Client-only: offline-first admin app and token-based auth flows.
     '/admin/**': { ssr: false },
@@ -162,7 +163,10 @@ export default defineNuxtConfig({
       periodicSyncForUpdates: 3600 // Check for updates every hour
     },
     devOptions: {
-      enabled: true, // Enable in dev to test PWA
+      // Disabled in dev: the dev service worker serves stale pages/modules
+      // after edits (blank plan pickers, phantom PostCSS errors). Test PWA
+      // behaviour against a production build instead.
+      enabled: false,
       type: 'module',
       navigateFallback: undefined,
     }

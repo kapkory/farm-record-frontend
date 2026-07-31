@@ -32,6 +32,7 @@
               <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Due Date</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Assigned To</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Parent Task</th>
+              <th class="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 bg-white">
@@ -44,9 +45,9 @@
                       @click="toggleDone(task)"
                       :disabled="!task.uuid || togglingUuid === task.uuid"
                       :title="isDone(task) ? 'Mark as not done' : 'Mark as done'"
-                      :class="['mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors', isDone(task) ? 'border-green-500 bg-green-500' : 'border-gray-300 hover:border-green-400']"
+                      :class="['mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2 shadow-sm transition-all hover:scale-110 hover:shadow focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50', isDone(task) ? 'border-green-500 bg-green-500' : 'border-gray-400 bg-gray-50 hover:border-green-500 hover:bg-green-50']"
                     >
-                      <Check v-if="isDone(task)" class="h-3 w-3 text-white" />
+                      <Check v-if="isDone(task)" class="h-3.5 w-3.5 text-white" />
                     </button>
                     <div>
                       <p :class="['text-sm font-medium', isDone(task) ? 'text-gray-400 line-through' : 'text-gray-900']">
@@ -68,6 +69,17 @@
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ task.due_date || '—' }}</td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ task.assignee?.name || task.assignee?.email || '—' }}</td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">—</td>
+                <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
+                  <button
+                    type="button"
+                    :disabled="!task.uuid"
+                    @click="openEditTaskModal(task)"
+                    class="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <Pencil class="h-3.5 w-3.5" />
+                    Edit
+                  </button>
+                </td>
               </tr>
               <tr v-for="sub in task.sub_tasks" :key="sub.id ?? sub.uuid" class="bg-gray-50 hover:bg-gray-100">
                 <td class="py-3 pl-12 pr-6">
@@ -78,9 +90,9 @@
                       @click="toggleDone(sub)"
                       :disabled="!sub.uuid || togglingUuid === sub.uuid"
                       :title="isDone(sub) ? 'Mark as not done' : 'Mark as done'"
-                      :class="['mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors', isDone(sub) ? 'border-green-500 bg-green-500' : 'border-gray-300 hover:border-green-400']"
+                      :class="['mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 shadow-sm transition-all hover:scale-110 hover:shadow focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50', isDone(sub) ? 'border-green-500 bg-green-500' : 'border-gray-400 bg-gray-50 hover:border-green-500 hover:bg-green-50']"
                     >
-                      <Check v-if="isDone(sub)" class="h-2.5 w-2.5 text-white" />
+                      <Check v-if="isDone(sub)" class="h-3 w-3 text-white" />
                     </button>
                     <div>
                       <p :class="['text-sm font-medium', isDone(sub) ? 'text-gray-400 line-through' : 'text-gray-700']">{{ sub.title || 'Untitled task' }}</p>
@@ -97,10 +109,21 @@
                 <td class="whitespace-nowrap px-6 py-3 text-sm text-gray-500">{{ sub.due_date || '—' }}</td>
                 <td class="whitespace-nowrap px-6 py-3 text-sm text-gray-500">{{ sub.assignee?.name || sub.assignee?.email || '—' }}</td>
                 <td class="whitespace-nowrap px-6 py-3 text-sm text-gray-500">{{ task.title || 'Untitled task' }}</td>
+                <td class="whitespace-nowrap px-6 py-3 text-right text-sm">
+                  <button
+                    type="button"
+                    :disabled="!sub.uuid"
+                    @click="openEditTaskModal(sub)"
+                    class="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <Pencil class="h-3.5 w-3.5" />
+                    Edit
+                  </button>
+                </td>
               </tr>
             </template>
             <tr v-if="!tasks.length">
-              <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+              <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                 No tasks found yet. Add the first task above.
               </td>
             </tr>
@@ -117,7 +140,7 @@
           <div class="relative w-full max-w-3xl rounded-lg bg-white shadow-xl">
             <div class="flex items-center justify-between border-b border-gray-200 p-4">
               <div>
-                <h3 class="text-lg font-semibold text-gray-900">New Task</h3>
+                <h3 class="text-lg font-semibold text-gray-900">{{ isEditing ? 'Edit Task' : 'New Task' }}</h3>
                 <p class="mt-1 text-sm text-gray-500">Capture what needs to be done, when it is due, and who should handle it.</p>
               </div>
               <button type="button" @click="closeTaskModal" class="text-gray-400 transition-colors hover:text-gray-600">
@@ -180,6 +203,18 @@
                 <p v-if="formErrors.description" class="mt-1 text-xs text-red-600">{{ formErrors.description }}</p>
               </div>
 
+              <div v-if="isEditing" class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 sm:flex-row sm:items-center">
+                <label class="inline-flex items-center gap-3">
+                  <input v-model="taskForm.record_expense" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500" />
+                  <span class="text-sm font-medium text-gray-900">Record Expense</span>
+                </label>
+
+                <div v-if="taskForm.record_expense" class="sm:w-64">
+                  <Input id="task_expense_amount" v-model="taskForm.expense_amount" type="number" min="0" step="0.01" class="w-full" placeholder="Expense Amount" />
+                  <p v-if="formErrors.expense_amount" class="mt-1 text-xs text-red-600">{{ formErrors.expense_amount }}</p>
+                </div>
+              </div>
+
               <div v-if="submitError" class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 <p class="font-medium">Please fix the following before saving:</p>
                 <p class="mt-1">{{ submitError }}</p>
@@ -194,6 +229,7 @@
                 </button>
                 <Button type="submit" :disabled="submitting || !taskableUuidValue">
                   <span v-if="submitting">Saving...</span>
+                  <span v-else-if="isEditing">Save Changes</span>
                   <span v-else>Save Task</span>
                 </Button>
               </div>
@@ -206,7 +242,7 @@
 </template>
 
 <script lang="ts" setup>
-import { Check, Plus, X } from 'lucide-vue-next'
+import { Check, Pencil, Plus, X } from 'lucide-vue-next'
 
 type TaskPriority = 1 | 2 | 3 | 4
 type TaskStatus = 1 | 2 | 3 | 4 | 5
@@ -247,6 +283,7 @@ type TaskFormErrorKey =
   | 'due_date'
   | 'assigned_to_user_id'
   | 'parent_task_id'
+  | 'expense_amount'
 
 type TaskValidationErrors = Partial<Record<TaskFormErrorKey, string>>
 
@@ -288,7 +325,9 @@ const createDefaultForm = () => ({
   task_status: '1',
   due_date: '',
   assigned_to_user_id: '',
-  parent_task_id: ''
+  parent_task_id: '',
+  record_expense: false,
+  expense_amount: ''
 })
 
 const tasks = resource.items
@@ -301,9 +340,14 @@ const showAddTaskModal = ref(false)
 const formErrors = ref<TaskValidationErrors>({})
 const errorList = ref<string[]>([])
 const taskForm = ref(createDefaultForm())
+const editingTask = ref<TaskRecord | null>(null)
+const isEditing = computed(() => !!editingTask.value)
 
 const parentTaskOptions = computed(() =>
-  tasks.value.filter((task) => String(task.id ?? '') !== taskForm.value.parent_task_id)
+  tasks.value.filter((task) =>
+    String(task.id ?? '') !== taskForm.value.parent_task_id
+    && (!editingTask.value || task.uuid !== editingTask.value.uuid)
+  )
 )
 
 const toNumberOrNull = (value: string | number | null | undefined) => {
@@ -320,7 +364,29 @@ const resetForm = () => {
 }
 
 const openTaskModal = () => {
+  editingTask.value = null
   resetForm()
+  showAddTaskModal.value = true
+}
+
+const openEditTaskModal = (task: TaskRecord) => {
+  if (!task.uuid) return
+
+  editingTask.value = task
+  submitError.value = null
+  formErrors.value = {}
+  errorList.value = []
+  taskForm.value = {
+    title: task.title || '',
+    description: task.description || '',
+    priority: String(task.priority ?? 1),
+    task_status: String(task.task_status ?? 1),
+    due_date: (task.due_date || '').slice(0, 10),
+    assigned_to_user_id: task.assigned_to_user_id != null ? String(task.assigned_to_user_id) : '',
+    parent_task_id: task.parent_task_id != null ? String(task.parent_task_id) : '',
+    record_expense: false,
+    expense_amount: ''
+  }
   showAddTaskModal.value = true
 }
 
@@ -329,6 +395,7 @@ const closeTaskModal = () => {
   submitError.value = null
   formErrors.value = {}
   errorList.value = []
+  editingTask.value = null
 }
 
 const priorityLabel = (value: number | string | null | undefined) => {
@@ -385,6 +452,7 @@ const setValidationErrors = (errors: Record<string, string[] | string> | undefin
     if (key === 'due_date') mapped.due_date = message
     if (key === 'assigned_to_user_id') mapped.assigned_to_user_id = message
     if (key === 'parent_task_id') mapped.parent_task_id = message
+    if (key === 'expense_amount') mapped.expense_amount = message
   }
 
   formErrors.value = mapped
@@ -436,13 +504,20 @@ const toggleDone = async (task: TaskRecord) => {
 const saveTask = async () => {
   if (!taskableUuidValue.value) return
 
+  if (isEditing.value && taskForm.value.record_expense && !taskForm.value.expense_amount) {
+    submitError.value = 'Please enter the expense amount before saving.'
+    formErrors.value = { expense_amount: 'Please enter the expense amount before saving.' }
+    errorList.value = ['Please enter the expense amount before saving.']
+    return
+  }
+
   submitting.value = true
   submitError.value = null
   formErrors.value = {}
   errorList.value = []
 
   const assignedTo = toNumberOrNull(taskForm.value.assigned_to_user_id)
-  const payload = {
+  const payload: Record<string, any> = {
     title: taskForm.value.title || null,
     description: taskForm.value.description || null,
     priority: Number(taskForm.value.priority),
@@ -454,16 +529,29 @@ const saveTask = async () => {
     taskable_uuid: taskableUuidValue.value
   }
 
+  if (isEditing.value) {
+    payload.record_expense = taskForm.value.record_expense
+    payload.expense_amount = taskForm.value.record_expense ? Number(taskForm.value.expense_amount) : null
+  }
+
+  const resolvedAssignee = farmUsers.value.find(u => Number(u.id) === assignedTo) ?? null
+
   try {
-    const result = await resource.create(payload, {
-      ...payload,
-      assignee: farmUsers.value.find(u => Number(u.id) === assignedTo) ?? null
-    })
+    const editing = editingTask.value
+    const result = editing?.uuid
+      ? await resource.update(editing.uuid, payload)
+      : await resource.create(payload, { ...payload, assignee: resolvedAssignee })
+
     if (!result.ok) {
       setValidationErrors(result.errors)
       submitError.value = result.message || 'Failed to save task'
       return
     }
+
+    // update() doesn't resolve the assignee relation locally the way
+    // create()'s `display` param does — patch it in so the row doesn't
+    // show a stale assignee until the next fetch.
+    if (editing) Object.assign(editing, result.record, { assignee: resolvedAssignee })
 
     resetForm()
     closeTaskModal()

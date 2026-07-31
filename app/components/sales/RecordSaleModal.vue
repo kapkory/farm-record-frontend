@@ -242,6 +242,9 @@ const applyContext = () => {
   if (ctx.category) selectCategory(ctx.category)
   if (ctx.product) form.value.product = ctx.product
   if (ctx.unit) form.value.unit = ctx.unit
+  if (ctx.quantity) form.value.quantity = String(ctx.quantity)
+  if (ctx.date) form.value.date = ctx.date
+  if (ctx.farmUuid) form.value.farm_uuid = ctx.farmUuid
 }
 
 // Recent unlinked collections matching the product being sold ("honey"
@@ -249,10 +252,30 @@ const applyContext = () => {
 // collections, and offline there's nothing to fetch — hide the picker.
 let productionFetchTimer: ReturnType<typeof setTimeout> | null = null
 
+/** Injects the context-preselected production (e.g. the harvest just saved)
+ *  into the options list so it stays linked even if the "unlinked" endpoint
+ *  hasn't indexed it yet (offline, or a same-request race) or doesn't return
+ *  it for some other reason. */
+const withPreselectedOption = (options: ProductionOption[]): ProductionOption[] => {
+  const preselectedUuid = props.context?.productionUuid
+  if (!preselectedUuid || options.some(p => p.uuid === preselectedUuid)) return options
+  return [
+    {
+      uuid: preselectedUuid,
+      name: props.context?.product ?? '',
+      date: props.context?.date ?? null,
+      quantity: props.context?.quantity ?? null,
+      unit: props.context?.unit ?? null,
+      source_label: 'This harvest'
+    },
+    ...options
+  ]
+}
+
 const fetchProductionOptions = async () => {
-  linkedProductionUuid.value = ''
+  linkedProductionUuid.value = props.context?.productionUuid ?? ''
   if (form.value.category === 'animal' || !form.value.product) {
-    productionOptions.value = []
+    productionOptions.value = withPreselectedOption([])
     return
   }
   try {
@@ -263,9 +286,9 @@ const fetchProductionOptions = async () => {
       params.set('sellable_uuid', props.context.sellableUuid)
     }
     const response = await $apiFetch<any>(`/api/v1/farms/farm/productions/unlinked?${params}`)
-    productionOptions.value = (response?.data ?? []).filter((p: ProductionOption) => !!p.uuid)
+    productionOptions.value = withPreselectedOption((response?.data ?? []).filter((p: ProductionOption) => !!p.uuid))
   } catch {
-    productionOptions.value = []
+    productionOptions.value = withPreselectedOption([])
   }
 }
 

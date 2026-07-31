@@ -32,6 +32,7 @@
           Record Harvest
         </button>
         <button
+          v-if="harvestSessions.length"
           class="inline-flex items-center px-4 py-2 bg-white border border-green-500 text-green-600 text-sm font-semibold rounded-lg hover:bg-green-50 transition-colors"
           @click="showSaleModal = true"
         >

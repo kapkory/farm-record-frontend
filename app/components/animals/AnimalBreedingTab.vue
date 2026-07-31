@@ -72,7 +72,10 @@
                 <span v-else class="text-gray-400">—</span>
               </td>
               <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                {{ record.expected_birth_date_human || record.expected_birth_date || '—' }}
+                <p>{{ record.expected_birth_date_human || record.expected_birth_date || '—' }}</p>
+                <p v-if="record.expected_birth_date" class="mt-0.5 text-xs" :class="birthCountdownClass(record)">
+                  {{ birthCountdownLabel(record) }}
+                </p>
               </td>
               <td class="whitespace-nowrap px-6 py-4">
                 <span :class="[
@@ -191,6 +194,20 @@
                   </div>
                 </div>
                 <p v-if="formErrors.sire_id" class="mt-1 text-xs text-red-600">{{ formErrors.sire_id }}</p>
+
+                <!-- Inbreeding warning (non-blocking) -->
+                <div
+                  v-if="inbreedingWarning"
+                  :class="[
+                    'mt-2 flex items-start gap-2 rounded-md border px-3 py-2 text-sm',
+                    inbreedingWarning.severity === 'high' ? 'border-red-200 bg-red-50 text-red-800' :
+                    inbreedingWarning.severity === 'medium' ? 'border-amber-200 bg-amber-50 text-amber-800' :
+                    'border-yellow-200 bg-yellow-50 text-yellow-800'
+                  ]"
+                >
+                  <AlertTriangle class="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <span><span class="font-semibold">Inbreeding risk:</span> {{ inbreedingWarning.message }} You can still record this mating.</span>
+                </div>
               </div>
 
               <!-- AI-specific fields -->
@@ -226,7 +243,8 @@
                 </div>
                 <div>
                   <Label class="mb-1 block text-sm font-medium text-gray-700">Expected Birth Date</Label>
-                  <Input v-model="breedingForm.expected_birth_date" type="date" class="w-full" />
+                  <Input v-model="breedingForm.expected_birth_date" type="date" class="w-full" @input="markBirthDateEdited" />
+                  <p v-if="expectedBirthHint" class="mt-1 text-xs text-gray-500">{{ expectedBirthHint }}</p>
                   <p v-if="formErrors.expected_birth_date" class="mt-1 text-xs text-red-600">{{ formErrors.expected_birth_date }}</p>
                 </div>
               </div>
@@ -283,11 +301,12 @@
 </template>
 
 <script lang="ts" setup>
-import { Plus, X, CloudOff } from 'lucide-vue-next'
+import { Plus, X, CloudOff, AlertTriangle } from 'lucide-vue-next'
 
 const props = defineProps<{
   animalUuid: string
   trackingType: 'individual' | 'group'
+  gestationDays?: number | null
 }>()
 
 const {
@@ -310,6 +329,43 @@ const {
   selectSire,
   fetchBreedings,
   saveBreeding,
-  updateBreedingStatus
+  updateBreedingStatus,
+  setGestationDays,
+  markBirthDateEdited,
+  expectedBirthHint,
+  inbreedingWarning
 } = useAnimalBreedings(props.animalUuid, props.trackingType)
+
+// Feed the dam's gestation length in so the expected birth date pre-fills.
+watch(() => props.gestationDays, days => setGestationDays(days), { immediate: true })
+
+// "Time it might give birth" — a countdown from the expected date. Computed
+// on the client so it stays right for offline records too, and only for
+// pregnancies still pending (born/aborted/failed have already resolved).
+const daysUntilBirth = (record: { expected_birth_date?: string | null }) => {
+  if (!record.expected_birth_date) return null
+  const target = new Date(`${record.expected_birth_date}T00:00:00`)
+  if (Number.isNaN(target.getTime())) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000)
+}
+
+const birthCountdownLabel = (record: { expected_birth_date?: string | null; status?: string }) => {
+  if (record.status && record.status !== 'pending') return ''
+  const days = daysUntilBirth(record)
+  if (days === null) return ''
+  if (days > 1) return `in ${days} days`
+  if (days === 1) return 'tomorrow'
+  if (days === 0) return 'due today'
+  return `overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'}`
+}
+
+const birthCountdownClass = (record: { expected_birth_date?: string | null; status?: string }) => {
+  if (record.status && record.status !== 'pending') return 'text-gray-400'
+  const days = daysUntilBirth(record)
+  if (days === null) return 'text-gray-400'
+  if (days < 0) return 'font-semibold text-red-600'
+  if (days <= 7) return 'font-semibold text-amber-600'
+  return 'text-gray-500'
+}
 </script>

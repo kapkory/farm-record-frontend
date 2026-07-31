@@ -32,6 +32,7 @@
               <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Unit</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Grade</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Notes</th>
+              <th class="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 bg-white">
@@ -43,9 +44,18 @@
               <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ harvest.unit || '—' }}</td>
               <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ harvest.grade || '—' }}</td>
               <td class="max-w-sm px-6 py-4 text-sm text-gray-500">{{ harvest.notes || '—' }}</td>
+              <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
+                <button
+                  type="button"
+                  @click="openSaleModalForHarvest(harvest)"
+                  class="inline-flex items-center gap-1 rounded-md border border-green-500 px-2.5 py-1.5 text-xs font-medium text-green-600 transition-colors hover:bg-green-50"
+                >
+                  Record Sale
+                </button>
+              </td>
             </tr>
             <tr v-if="!harvests.length">
-              <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+              <td colspan="8" class="px-6 py-12 text-center text-gray-500">
                 No harvest records found yet. Add the first harvest above.
               </td>
             </tr>
@@ -129,6 +139,12 @@
                 </div>
               </div>
 
+              <label class="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-4">
+                <input v-model="harvestForm.record_sale" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500" />
+                <span class="text-sm font-medium text-gray-900">I already sold or gave out this harvest — register a sale</span>
+              </label>
+              <p v-if="harvestForm.record_sale" class="-mt-2 text-xs text-gray-500">You'll fill in the sale details (buyer, price, payment) right after saving this harvest.</p>
+
               <div>
                 <Label for="harvest_notes" class="mb-1 block text-sm font-medium text-gray-700">Notes</Label>
                 <textarea id="harvest_notes" v-model="harvestForm.notes" rows="4" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Add anything important about this harvest in simple words"></textarea>
@@ -157,6 +173,8 @@
         </div>
       </div>
     </Teleport>
+
+    <RecordSaleModal :open="showSaleModal" :context="saleModalContext" @close="showSaleModal = false" />
   </div>
 </template>
 
@@ -185,10 +203,14 @@ type HarvestValidationErrors = Partial<Record<HarvestFormErrorKey, string>>
 const props = withDefaults(defineProps<{
   cropName?: string
   plantingUuid?: string
+  farmUuid?: string
 }>(), {
   cropName: '',
-  plantingUuid: ''
+  plantingUuid: '',
+  farmUuid: ''
 })
+
+const emit = defineEmits<{ 'harvest-saved': [] }>()
 
 const route = useRoute()
 
@@ -210,7 +232,8 @@ const createDefaultForm = () => ({
   grade: '',
   notes: '',
   record_expense: false,
-  expense_amount: ''
+  expense_amount: '',
+  record_sale: false
 })
 
 const harvests = computed(() => resource.items.value.filter(belongsToCurrentPlanting))
@@ -222,6 +245,8 @@ const showAddHarvestModal = ref(false)
 const formErrors = ref<HarvestValidationErrors>({})
 const errorList = ref<string[]>([])
 const harvestForm = ref(createDefaultForm())
+const showSaleModal = ref(false)
+const saleModalContext = ref<Record<string, any> | null>(null)
 
 const belongsToCurrentPlanting = (record: HarvestRecord) => {
   const linkedUuid = record.productionable_uuid || record.productionable?.uuid || null
@@ -280,6 +305,22 @@ const setValidationErrors = (errors: Record<string, string[] | string> | undefin
 
 const fetchHarvests = () => resource.fetch()
 
+const openSaleModalForHarvest = (harvest: { uuid?: string; name?: string | null; quantity?: number | string | null; unit?: string | null; date?: string | null }) => {
+  saleModalContext.value = {
+    category: 'crop',
+    product: harvest.name || defaultHarvestName.value,
+    unit: harvest.unit || undefined,
+    quantity: harvest.quantity != null && harvest.quantity !== '' ? Number(harvest.quantity) : undefined,
+    date: harvest.date || today(),
+    farmUuid: props.farmUuid || undefined,
+    sellableType: 'planting',
+    sellableUuid: plantingUuidValue.value,
+    sellableLabel: harvest.name || defaultHarvestName.value,
+    productionUuid: harvest.uuid
+  }
+  showSaleModal.value = true
+}
+
 const saveHarvest = async () => {
   if (!plantingUuidValue.value) return
 
@@ -315,6 +356,18 @@ const saveHarvest = async () => {
       setValidationErrors(result.errors)
       submitError.value = result.message || 'Failed to save harvest record'
       return
+    }
+
+    emit('harvest-saved')
+
+    if (harvestForm.value.record_sale) {
+      openSaleModalForHarvest({
+        uuid: (result.record as any)?.uuid,
+        name: harvestForm.value.name || defaultHarvestName.value,
+        quantity: harvestForm.value.quantity,
+        unit: harvestForm.value.unit,
+        date: harvestForm.value.date
+      })
     }
 
     resetForm()

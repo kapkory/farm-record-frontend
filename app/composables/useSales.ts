@@ -53,9 +53,15 @@ export interface SaleContext {
   category?: string
   product?: string
   unit?: string
+  quantity?: number
+  date?: string
+  farmUuid?: string
   sellableType?: string
   sellableUuid?: string
   sellableLabel?: string
+  /** Pre-links the sale to a Production record (e.g. a harvest) so the
+   *  farmer doesn't have to pick it again from the "which collection" list. */
+  productionUuid?: string
 }
 
 export const SALE_CATEGORIES = [
