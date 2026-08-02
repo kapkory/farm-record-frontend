@@ -13,7 +13,6 @@ export interface AnimalTreatmentRecord {
   synced?: boolean
   sync_error?: string | null
 }
-
 export interface AnimalTreatmentTypeOption {
   id: number | string
   name: string
