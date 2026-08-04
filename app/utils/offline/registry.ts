@@ -7,6 +7,11 @@ import type { EntityCtx } from '../db'
 //
 // `ctx` carries parent scoping supplied by the calling page/composable:
 //   - animalUuid      breeding parent
+//   - breedingUuid    the pregnancy a birth registration belongs to
+//   - farmUuid        the farm a bulk input was bought for
+//   - farmInputUuid   the bulk input an application draws from
+//   - weighableUuid   the animal or group a weight reading belongs to
+//                     (+ weighableType, 'animal' | 'animal_group')
 //   - eventableUuid   health-record (animal event) parent + eventable_type
 //   - taskableUuid    task parent (+ taskableType morph alias)
 //   - model           morph alias for treatments/transactions/productions
@@ -70,7 +75,13 @@ export const entityRegistry = {
     name: 'animalGroup',
     endpoints: {
       list: () => '/api/v1/farms/farm/animals/groups/list',
-      create: () => '/api/v1/farms/farm/animals/groups'
+      create: () => '/api/v1/farms/farm/animals/groups',
+      show: uuid => `/api/v1/farms/farm/animals/groups/${uuid}`,
+      update: uuid => `/api/v1/farms/farm/animals/groups/${uuid}`,
+      // Without this a group delete has no route to build, so it is dropped
+      // as "unroutable": the record vanishes locally but is never deleted on
+      // the server, so another device re-syncs it back.
+      remove: uuid => `/api/v1/farms/farm/animals/groups/${uuid}`
     },
     parentOf: () => null
   },
@@ -83,6 +94,58 @@ export const entityRegistry = {
       update: uuid => `/api/v1/farms/farm/animals/breedings/${uuid}`
     },
     parentOf: ctx => ctx.animalUuid ?? null
+  },
+
+  // Registering a birth: one POST that closes the pregnancy, creates an
+  // Animal per live offspring and logs the birth event, all in a backend
+  // transaction. The request uuid doubles as the birth event's uuid, so a
+  // replay from the queue returns the stored result instead of a second litter.
+  breedingBirth: {
+    name: 'breedingBirth',
+    endpoints: {
+      // Never listed on its own — the outcome is read back off the breeding.
+      list: ctx => `/api/v1/farms/farm/animals/breedings/list/${ctx.animalUuid ?? ''}`,
+      create: ctx => `/api/v1/farms/farm/animals/breedings/${ctx.breedingUuid}/birth`
+    },
+    parentOf: ctx => ctx.breedingUuid ?? null
+  },
+
+  // Live weight readings. One row per weighing; for a group the row is a
+  // sample average per head, so individual and group readings share an axis.
+  animalWeight: {
+    name: 'animalWeight',
+    endpoints: {
+      list: ctx => `/api/v1/farms/farm/animals/weights/list/${ctx.weighableUuid ?? ''}`,
+      create: () => '/api/v1/farms/farm/animals/weights',
+      remove: uuid => `/api/v1/farms/farm/animals/weights/${uuid}`
+    },
+    parentOf: ctx => ctx.weighableUuid ?? null
+  },
+
+  // Inputs bought in bulk and used across many animals — dip, drugs, feed.
+  farmInput: {
+    name: 'farmInput',
+    endpoints: {
+      list: ctx => `/api/v1/farms/farm/inputs/list/${ctx.farmUuid ?? ''}`,
+      create: () => '/api/v1/farms/farm/inputs',
+      show: uuid => `/api/v1/farms/farm/inputs/${uuid}`,
+      update: uuid => `/api/v1/farms/farm/inputs/${uuid}`,
+      remove: uuid => `/api/v1/farms/farm/inputs/${uuid}`
+    },
+    parentOf: ctx => ctx.farmUuid ?? null
+  },
+
+  // One use of an input across many animals. Like the birth registration the
+  // whole thing — quantity, targets and their shares — is a single atomic POST,
+  // so it queues and replays offline without ever half-applying.
+  inputApplication: {
+    name: 'inputApplication',
+    endpoints: {
+      list: ctx => `/api/v1/farms/farm/inputs/${ctx.farmInputUuid ?? ''}`,
+      create: ctx => `/api/v1/farms/farm/inputs/${ctx.farmInputUuid}/applications`,
+      remove: uuid => `/api/v1/farms/farm/inputs/applications/${uuid}`
+    },
+    parentOf: ctx => ctx.farmInputUuid ?? null
   },
 
   // Health records are AnimalEvents on the backend

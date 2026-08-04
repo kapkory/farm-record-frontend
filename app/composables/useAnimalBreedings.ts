@@ -28,6 +28,16 @@ export interface BreedingRecord {
   expected_birth_date?: string | null
   expected_birth_date_human?: string | null
   status: 'pending' | 'born' | 'aborted' | 'failed'
+  actual_birth_date?: string | null
+  actual_birth_date_human?: string | null
+  offspring_count?: number | null
+  stillborn_count?: number | null
+  offspring?: Array<{
+    uuid?: string
+    name?: string | null
+    tag_number?: string | null
+    gender?: string | null
+  }>
   ai_straw_code?: string | null
   ai_bull_name?: string | null
   ai_technician?: string | null
@@ -52,7 +62,9 @@ export const useAnimalBreedings = (animalUuid: string, trackingType: 'individual
     sire_id: '' as string,
     service_date: today(),
     expected_birth_date: '',
-    status: 'pending' as 'pending' | 'born' | 'aborted' | 'failed',
+    // `born` is deliberately absent: a birth is recorded through
+    // registerBirth so the offspring and birth event are created with it.
+    status: 'pending' as 'pending' | 'aborted' | 'failed',
     ai_straw_code: '',
     ai_bull_name: '',
     ai_technician: '',
@@ -261,7 +273,7 @@ export const useAnimalBreedings = (animalUuid: string, trackingType: 'individual
     }
   }
 
-  const updateBreedingStatus = async (breedingUuid: string, newStatus: 'pending' | 'born' | 'aborted' | 'failed') => {
+  const updateBreedingStatus = async (breedingUuid: string, newStatus: 'pending' | 'aborted' | 'failed') => {
     try {
       await resource.update(breedingUuid, { status: newStatus })
     } catch (err) {

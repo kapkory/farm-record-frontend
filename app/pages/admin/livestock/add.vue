@@ -12,8 +12,18 @@
     </div>
 
     <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-900">Add Animal</h1>
-      <p class="text-gray-600 mt-1">Record an individual animal or an entire group/flock.</p>
+      <h1 class="text-3xl font-bold text-gray-900">{{ isEditing ? 'Edit Animal' : 'Add Animal' }}</h1>
+      <p class="text-gray-600 mt-1">
+        {{ isEditing
+          ? 'Update this animal\u2019s details. Fields you leave alone keep their current value.'
+          : 'Record an individual animal or an entire group/flock.' }}
+      </p>
+    </div>
+
+    <!-- Fetching the record being edited -->
+    <div v-if="loadingRecord" class="mb-6 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4">
+      <div class="h-5 w-5 animate-spin rounded-full border-b-2 border-green-500"></div>
+      <p class="text-sm text-gray-600">Loading animal\u2026</p>
     </div>
 
     <!-- Success Message -->
@@ -29,7 +39,7 @@
     </div>
 
     <!-- Tracking Type Selector -->
-    <div class="flex items-center gap-2 mb-6">
+    <div v-if="!isEditing" class="flex items-center gap-2 mb-6">
       <span class="text-sm font-medium text-gray-600 mr-1">Recording:</span>
       <button
         type="button"
@@ -129,8 +139,9 @@
             </select>
           </div>
 
-          <!-- Vaccination / treatment plan -->
-          <div class="space-y-1">
+          <!-- Vaccination / treatment plan (set when the animal is created;
+               re-applying one on edit would regenerate its whole schedule) -->
+          <div v-if="!isEditing" class="space-y-1">
             <Label for="i_treatment_plan" class="block text-sm font-semibold text-gray-700">Vaccination Plan</Label>
             <select
               id="i_treatment_plan"
@@ -194,7 +205,7 @@
           </div>
 
           <!-- Mother (dam) -->
-          <div class="space-y-1">
+          <div v-if="!isEditing" class="space-y-1">
             <Label for="i_dam" class="block text-sm font-semibold text-gray-700">Mother <span class="font-normal text-gray-400">(optional)</span></Label>
             <select
               id="i_dam"
@@ -207,7 +218,7 @@
           </div>
 
           <!-- Father (sire) -->
-          <div class="space-y-1">
+          <div v-if="!isEditing" class="space-y-1">
             <Label for="i_sire" class="block text-sm font-semibold text-gray-700">Father <span class="font-normal text-gray-400">(optional)</span></Label>
             <select
               id="i_sire"
@@ -264,6 +275,24 @@
         </div>
       </div>
 
+      <!-- Status (edit only — a new animal is always active) -->
+      <div v-if="isEditing" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Status</h2>
+        <div class="space-y-1 md:w-1/2">
+          <Label for="i_status" class="block text-sm font-semibold text-gray-700">Current Status</Label>
+          <select
+            id="i_status"
+            v-model="individual.status"
+            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          >
+            <option value="active">Active</option>
+            <option value="sold">Sold</option>
+            <option value="deceased">Deceased</option>
+            <option value="transferred">Transferred</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Notes -->
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Additional Notes</h2>
@@ -290,7 +319,7 @@
           </span>
           <span v-else class="flex items-center">
             <Tag class="w-4 h-4 mr-2" />
-            Save Animal
+            {{ isEditing ? 'Save Changes' : 'Save Animal' }}
           </span>
         </Button>
       </div>
@@ -571,6 +600,14 @@ const { getReference } = useReferenceData()
 const animalResource = useOfflineEntity<Record<string, any>>('animal')
 const groupResource = useOfflineEntity<Record<string, any>>('animalGroup')
 const router = useRouter()
+const route = useRoute()
+
+// This page doubles as the edit screen: /admin/livestock/add?edit=<uuid>.
+// Reusing the form means there is only one place where an animal's fields are
+// defined, rather than a second screen that drifts out of step with this one.
+const editUuid = computed(() => String(route.query.edit ?? ''))
+const isEditing = computed(() => editUuid.value.length > 0)
+const loadingRecord = ref(false)
 
 const trackingType = ref<'individual' | 'group'>('individual')
 const submitting = ref(false)
@@ -603,6 +640,7 @@ const individual = ref({
   acquisition_date: new Date().toISOString().split('T')[0],
   acquisition_type: 'born' as 'born' | 'purchased' | 'donated' | 'transferred',
   purchase_price: '',
+  status: 'active' as 'active' | 'sold' | 'deceased' | 'transferred',
   notes: ''
 })
 
@@ -704,13 +742,49 @@ const submitIndividual = async () => {
       notes: individual.value.notes || null
     }
 
+    if (isEditing.value) {
+      // Only the fields this form actually shows and pre-filled. The backend
+      // update is patch-style, so anything omitted here — vaccination plan,
+      // parents — keeps its stored value instead of being blanked.
+      const patch = {
+        farm_uuid: payload.farm_uuid,
+        animal_group_uuid: payload.animal_group_uuid,
+        animal_type_id: payload.animal_type_id,
+        animal_breed_id: payload.animal_breed_id,
+        tag_number: payload.tag_number,
+        name: payload.name,
+        gender: payload.gender,
+        date_of_birth: payload.date_of_birth,
+        acquisition_date: payload.acquisition_date,
+        acquisition_type: payload.acquisition_type,
+        purchase_price: payload.purchase_price,
+        status: individual.value.status,
+        notes: payload.notes
+      }
+
+      const updated = await animalResource.update(editUuid.value, patch)
+      if (!updated.ok) {
+        generalError.value = updated.message || 'Failed to update animal'
+        return
+      }
+
+      successMessage.value = updated.synced
+        ? 'Animal updated successfully!'
+        : 'Changes saved locally — they will sync when you are back online.'
+      await router.push(`/admin/livestock/animal/${editUuid.value}`)
+      return
+    }
+
     const result = await animalResource.create(payload, {
       ...payload,
       tracking_type: 'individual',
       status: 'active',
       count: 1,
       animal_type: animalTypes.value.find(t => t.id === Number(individual.value.animal_type_id)) ?? null,
-      breed: breeds.value.find(b => b.id === Number(individual.value.animal_breed_id)) ?? null
+      breed: breeds.value.find(b => b.id === Number(individual.value.animal_breed_id)) ?? null,
+      // The list reads farm off a nested object; without it a freshly created
+      // animal shows a blank Farm cell until the next full fetch.
+      farm: farms.value.find(f => f.uuid === individual.value.farm_uuid) ?? null
     })
     if (!result.ok) {
       generalError.value = result.message || 'Failed to save animal'
@@ -756,6 +830,8 @@ const submitGroup = async () => {
       current_count: Number(group.value.initial_count),
       animal_type: animalTypes.value.find(t => t.id === Number(group.value.animal_type_id)) ?? null,
       breed: breeds.value.find(b => b.id === Number(group.value.animal_breed_id)) ?? null,
+      farm: farms.value.find(f => f.uuid === group.value.farm_uuid) ?? null,
+      group_name: group.value.name,
       treatment_plan: selectedGroupPlan.value?.name ?? null
     })
     if (!result.ok) {
@@ -836,6 +912,57 @@ const sireChoices = computed(() => existingAnimals.value.filter(a => a.gender ==
 const animalLabel = (a: { name: string | null; tag_number: string | null }) =>
   a.name || a.tag_number || 'Unnamed animal'
 
+/**
+ * Pull the animal being edited into the form. Reads through the offline
+ * resource, so an animal created offline and not yet synced is still editable.
+ */
+const loadAnimalForEdit = async () => {
+  if (!isEditing.value) return
+
+  loadingRecord.value = true
+  try {
+    const record: any = await animalResource.find(editUuid.value)
+
+    if (!record) {
+      generalError.value = 'That animal could not be found.'
+      return
+    }
+
+    if (record.tracking_type === 'group') {
+      generalError.value = 'Groups cannot be edited from this screen yet. Open the group to manage it.'
+      return
+    }
+
+    trackingType.value = 'individual'
+    individual.value = {
+      farm_uuid: record.farm_uuid ?? record.farm?.uuid ?? '',
+      animal_group_uuid: record.animal_group?.uuid ?? '',
+      animal_type_id: record.animal_type?.id ?? '',
+      animal_breed_id: record.breed?.id ?? '',
+      // Set at creation and deliberately not re-editable here.
+      treatment_plan_uuid: '',
+      tag_number: record.tag_number ?? '',
+      name: record.name ?? '',
+      gender: record.gender ?? 'unknown',
+      date_of_birth: record.date_of_birth ?? '',
+      dam_uuid: '',
+      sire_uuid: '',
+      acquisition_date: record.acquisition_date ?? '',
+      acquisition_type: record.acquisition_type ?? 'born',
+      purchase_price: record.purchase_price !== null && record.purchase_price !== undefined
+        ? String(record.purchase_price)
+        : '',
+      status: record.status ?? 'active',
+      notes: record.notes ?? ''
+    }
+  } catch (err) {
+    console.error('Failed to load the animal for editing:', err)
+    generalError.value = 'Failed to load this animal.'
+  } finally {
+    loadingRecord.value = false
+  }
+}
+
 onMounted(() => {
   fetchFarms()
   fetchAnimalTypes()
@@ -843,5 +970,6 @@ onMounted(() => {
   fetchAnimalGroups()
   fetchTreatmentPlans()
   fetchExistingAnimals()
+  loadAnimalForEdit()
 })
 </script>

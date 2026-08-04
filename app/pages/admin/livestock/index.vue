@@ -211,7 +211,8 @@
                   <Eye class="w-4 h-4" />
                 </button>
                 <button
-                  @click.stop="navigateTo(`/admin/livestock/animal/${animal.uuid}`)"
+                  v-if="animal.tracking_type === 'individual'"
+                  @click.stop="navigateTo(`/admin/livestock/add?edit=${animal.uuid}`)"
                   class="text-gray-600 hover:text-gray-900"
                   title="Edit"
                 >

@@ -71,11 +71,31 @@
                 </template>
                 <span v-else class="text-gray-400">—</span>
               </td>
-              <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                <p>{{ record.expected_birth_date_human || record.expected_birth_date || '—' }}</p>
-                <p v-if="record.expected_birth_date" class="mt-0.5 text-xs" :class="birthCountdownClass(record)">
-                  {{ birthCountdownLabel(record) }}
-                </p>
+              <td class="px-6 py-4 text-sm text-gray-500">
+                <template v-if="record.status === 'born'">
+                  <p class="font-medium text-gray-900">
+                    Born {{ record.actual_birth_date_human || record.actual_birth_date || '—' }}
+                  </p>
+                  <div v-if="record.offspring?.length" class="mt-1 flex flex-wrap gap-1">
+                    <NuxtLink
+                      v-for="calf in record.offspring"
+                      :key="calf.uuid"
+                      :to="`/admin/livestock/animal/${calf.uuid}`"
+                      class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 hover:bg-green-100"
+                    >
+                      {{ calf.name || calf.tag_number || 'Offspring' }}
+                    </NuxtLink>
+                  </div>
+                  <p v-if="record.stillborn_count" class="mt-1 text-xs text-gray-500">
+                    {{ record.stillborn_count }} stillborn
+                  </p>
+                </template>
+                <template v-else>
+                  <p>{{ record.expected_birth_date_human || record.expected_birth_date || '—' }}</p>
+                  <p v-if="record.expected_birth_date" class="mt-0.5 text-xs" :class="birthCountdownClass(record)">
+                    {{ birthCountdownLabel(record) }}
+                  </p>
+                </template>
               </td>
               <td class="whitespace-nowrap px-6 py-4">
                 <span :class="[
@@ -92,18 +112,22 @@
                 {{ record.notes || '—' }}
               </td>
               <td class="whitespace-nowrap px-6 py-4 text-right">
-                <div class="relative inline-block">
+                <div v-if="record.status === 'pending'" class="flex items-center justify-end gap-2">
+                  <Button type="button" class="px-2.5 py-1 text-xs" @click="openBirthModal(record)">
+                    Register Birth
+                  </Button>
                   <select
-                    :value="record.status"
-                    @change="(e: Event) => updateBreedingStatus(record.uuid!, (e.target as HTMLSelectElement).value as any)"
-                    class="rounded-md border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+                    value=""
+                    aria-label="Other outcome"
+                    @change="(e: Event) => resolveWithoutBirth(record, e.target as HTMLSelectElement)"
+                    class="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 focus:outline-none focus:ring-1 focus:ring-green-500"
                   >
-                    <option value="pending">Pending</option>
-                    <option value="born">Born</option>
+                    <option value="">Other outcome…</option>
                     <option value="aborted">Aborted</option>
                     <option value="failed">Failed</option>
                   </select>
                 </div>
+                <span v-else class="text-xs text-gray-400">—</span>
               </td>
             </tr>
             <tr v-if="!breedings.length">
@@ -257,10 +281,10 @@
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
                   <option value="pending">Pending</option>
-                  <option value="born">Born</option>
                   <option value="aborted">Aborted</option>
                   <option value="failed">Failed</option>
                 </select>
+                <p class="mt-1 text-xs text-gray-500">A birth is recorded later with Register Birth, so the offspring get created with it.</p>
                 <p v-if="formErrors.status" class="mt-1 text-xs text-red-600">{{ formErrors.status }}</p>
               </div>
 
@@ -297,16 +321,30 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Register Birth -->
+    <AnimalBirthModal
+      v-if="birthTarget"
+      :key="birthTarget.uuid"
+      :breeding="birthTarget"
+      :animal-uuid="animalUuid"
+      :dam-name="damName"
+      @close="birthTarget = null"
+      @saved="onBirthSaved"
+    />
   </div>
 </template>
 
 <script lang="ts" setup>
 import { Plus, X, CloudOff, AlertTriangle } from 'lucide-vue-next'
 
+import { useAnimalBreedings, type BreedingRecord } from '~/composables/useAnimalBreedings'
+
 const props = defineProps<{
   animalUuid: string
   trackingType: 'individual' | 'group'
   gestationDays?: number | null
+  damName?: string | null
 }>()
 
 const {
@@ -338,6 +376,33 @@ const {
 
 // Feed the dam's gestation length in so the expected birth date pre-fills.
 watch(() => props.gestationDays, days => setGestationDays(days), { immediate: true })
+
+// ── Register Birth ────────────────────────────────────────────────────────
+// A birth is never just a status change: it creates the offspring, logs a
+// birth event and closes the reminder task, so it goes through its own modal
+// and its own endpoint.
+const birthTarget = ref<BreedingRecord | null>(null)
+
+const openBirthModal = (record: BreedingRecord) => {
+  birthTarget.value = record
+}
+
+const onBirthSaved = (updated: BreedingRecord, synced: boolean) => {
+  const index = breedings.value.findIndex(b => b.uuid === updated.uuid)
+  if (index !== -1) breedings.value[index] = { ...breedings.value[index], ...updated }
+  birthTarget.value = null
+  // Queued offline, the server copy isn't there yet — the optimistic row above
+  // is all we have until the queue drains.
+  if (synced) fetchBreedings()
+}
+
+// Aborted / failed still resolve through the plain status update.
+const resolveWithoutBirth = (record: BreedingRecord, select: HTMLSelectElement) => {
+  const status = select.value as 'aborted' | 'failed' | ''
+  select.value = ''
+  if (!status || !record.uuid) return
+  updateBreedingStatus(record.uuid, status)
+}
 
 // "Time it might give birth" — a countdown from the expected date. Computed
 // on the client so it stays right for offline records too, and only for

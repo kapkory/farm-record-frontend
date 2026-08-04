@@ -9,6 +9,9 @@ export interface HiveRecord {
   name?: string | null
   hive_type?: string | null
   occupancy?: 'occupied' | 'empty' | 'absconded' | 'dead'
+  has_bees?: boolean
+  colonized_at?: string | null
+  vacated_at?: string | null
   installed_date?: string | null
   last_inspected_at?: string | null
   last_harvested_at?: string | null
@@ -41,6 +44,8 @@ export const HIVE_OCCUPANCIES = [
 
 export const useHives = () => {
   const resource = useOfflineEntity<HiveRecord>('hive')
+  const { isOnline } = useOffline()
+  const { $apiFetch } = useNuxtApp()
 
   const today = () => new Date().toISOString().split('T')[0] ?? ''
 
@@ -49,7 +54,11 @@ export const useHives = () => {
     hive_type: 'langstroth',
     installed_date: today(),
     harvest_interval_days: null as number | null,
-    notes: ''
+    notes: '',
+    // Bulk creation: how many identical hives to generate at once.
+    count: 1,
+    // Optional total cost for the whole batch, captured as one expense.
+    cost: null as number | null
   })
 
   const hives = resource.items
@@ -127,8 +136,103 @@ export const useHives = () => {
     }
   }
 
+  /**
+   * Create one or many hives at once. Online, this goes through the atomic
+   * bulk endpoint so the server assigns a clean run of sequential codes and
+   * (if a cost is given) posts a single batch expense. Offline, it falls back
+   * to queuing individual creates — but a cost needs the server, so a costed
+   * batch is refused while offline rather than silently dropping the money.
+   */
+  const saveHiveBatch = async (apiaryUuid: string, apiaryName?: string) => {
+    submitting.value = true
+    submitError.value = null
+    errorList.value = []
+
+    const form = hiveForm.value
+    const count = Math.max(1, Math.floor(Number(form.count) || 1))
+    const cost = form.cost ? Number(form.cost) : 0
+
+    if (cost > 0 && !isOnline.value) {
+      submitError.value = 'Connect to the internet to record the hive cost.'
+      submitting.value = false
+      return false
+    }
+
+    try {
+      if (isOnline.value) {
+        await $apiFetch('/sanctum/csrf-cookie')
+        await $apiFetch('/api/v1/farms/farm/bees/hives/bulk', {
+          method: 'POST',
+          body: {
+            batch_uuid: crypto.randomUUID(),
+            apiary_uuid: apiaryUuid,
+            count,
+            hive_type: form.hive_type || null,
+            installed_date: form.installed_date || null,
+            harvest_interval_days: form.harvest_interval_days || null,
+            notes: form.notes || null,
+            cost: cost || null
+          }
+        })
+        await resource.fetch()
+        closeModal()
+        return true
+      }
+
+      // Offline: queue `count` single creates; each gets its code on sync.
+      const display = {
+        hive_type: form.hive_type || null,
+        installed_date: form.installed_date || null,
+        harvest_interval_days: form.harvest_interval_days || null,
+        notes: form.notes || null,
+        code: null,
+        occupancy: 'occupied' as const,
+        harvest_status: 'unknown' as const,
+        days_remaining: null,
+        apiary_uuid: apiaryUuid,
+        apiary_name: apiaryName ?? null
+      }
+      for (let i = 0; i < count; i++) {
+        const result = await resource.create(
+          {
+            apiary_uuid: apiaryUuid,
+            name: form.name || null,
+            hive_type: form.hive_type || null,
+            installed_date: form.installed_date || null,
+            harvest_interval_days: form.harvest_interval_days || null,
+            notes: form.notes || null
+          },
+          display
+        )
+        if (!result.ok) {
+          errorList.value = [...new Set(Object.values(result.errors).flat())]
+          submitError.value = result.message || 'Validation failed'
+          return false
+        }
+      }
+      closeModal()
+      return true
+    } catch (err: any) {
+      const data = err?.data ?? err?.response?._data
+      if (data?.errors) errorList.value = [...new Set(Object.values<any>(data.errors).flat())]
+      submitError.value = data?.message || (err instanceof Error ? err.message : 'Failed to add hives')
+      return false
+    } finally {
+      submitting.value = false
+    }
+  }
+
   const setOccupancy = (uuid: string, occupancy: HiveRecord['occupancy']) =>
     resource.update(uuid, { occupancy })
+
+  /** Change a hive's colony status as of a date. The backend keeps the
+   *  colonized/vacated timeline in step, so we only send the new status and
+   *  when it was seen. */
+  const setHiveStatus = (uuid: string, occupancy: HiveRecord['occupancy'], asOf?: string | null) =>
+    resource.update(uuid, {
+      occupancy,
+      last_inspected_at: asOf || new Date().toISOString().split('T')[0]
+    })
 
   const removeHive = (uuid: string) => resource.remove(uuid)
 
@@ -169,7 +273,9 @@ export const useHives = () => {
     fetchHives,
     hivesForApiary,
     saveHive,
+    saveHiveBatch,
     setOccupancy,
+    setHiveStatus,
     removeHive,
     resetForm,
     openModal,

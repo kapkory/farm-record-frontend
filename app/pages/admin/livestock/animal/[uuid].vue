@@ -80,7 +80,7 @@
             <Banknote class="w-4 h-4 mr-2" />
             Sell
           </Button>
-          <Button variant="outline" @click="editAnimal">
+          <Button v-if="animal.tracking_type === 'individual'" variant="outline" @click="editAnimal">
             <Pencil class="w-4 h-4 mr-2" />
             Edit
           </Button>
@@ -149,8 +149,13 @@
                   <dd class="text-sm text-gray-900">{{ animal.date_of_birth ? calculateAge(animal.date_of_birth) : '-' }}</dd>
                 </div>
                 <div>
-                  <dt class="text-xs font-medium text-gray-500 uppercase">Weight</dt>
-                  <dd class="text-sm text-gray-900">{{ animal.weight_kg ? `${animal.weight_kg} kg` : '-' }}</dd>
+                  <dt class="text-xs font-medium text-gray-500 uppercase">Live Weight</dt>
+                  <dd class="text-sm text-gray-900">
+                    {{ animal.latest_weight_kg ? `${animal.latest_weight_kg} kg` : '-' }}
+                    <span v-if="animal.latest_weighed_on" class="block text-xs text-gray-500">
+                      {{ formatDate(animal.latest_weighed_on) }}
+                    </span>
+                  </dd>
                 </div>
               </template>
               <template v-else>
@@ -165,6 +170,15 @@
                 <div>
                   <dt class="text-xs font-medium text-gray-500 uppercase">Gender Composition</dt>
                   <dd class="text-sm text-gray-900 capitalize">{{ animal.gender || 'Mixed' }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium text-gray-500 uppercase">Avg Weight / Head</dt>
+                  <dd class="text-sm text-gray-900">
+                    {{ animal.latest_weight_kg ? `${animal.latest_weight_kg} kg` : '-' }}
+                    <span v-if="animal.latest_weighed_on" class="block text-xs text-gray-500">
+                      {{ formatDate(animal.latest_weighed_on) }}
+                    </span>
+                  </dd>
                 </div>
               </template>
             </dl>
@@ -237,9 +251,16 @@
 
         <div class="p-4">
           <AnimalTransactionTab v-if="activeTab === 'overview'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
+          <AnimalWeightTab
+            v-else-if="activeTab === 'weights'"
+            :weighable-uuid="uuid"
+            :tracking-type="animal.tracking_type"
+            :interval-days="animal.weighing_interval_days"
+            :date-of-birth="animal.date_of_birth"
+          />
           <AnimalProductionTab v-else-if="activeTab === 'production'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <AnimalTreatmentTab v-else-if="activeTab === 'treatments'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
-          <AnimalBreedingTab v-else-if="activeTab === 'breedings'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" :gestation-days="animal.gestation_days" v-if="animal.tracking_type == 'individual'"/>
+          <AnimalBreedingTab v-else-if="activeTab === 'breedings'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" :gestation-days="animal.gestation_days" :dam-name="animal.name" v-if="animal.tracking_type == 'individual'"/>
           <AnimalTaskTab v-else-if="activeTab === 'tasks'" :animal-uuid="uuid" :tracking-type="animal.tracking_type" />
           <div v-else class="text-center py-8">
             <Clock class="w-10 h-10 text-gray-300 mx-auto mb-2" />
@@ -288,6 +309,7 @@
 
 <script lang="ts" setup>
 import { ArrowLeft, Banknote, Tag, Users, Pencil, Trash2, Clock, X } from 'lucide-vue-next'
+import { db } from '../../../../utils/db'
 // import mockData from '~/data/animals.json'
 
 definePageMeta({
@@ -312,7 +334,9 @@ interface Animal {
   count: number
   gender: string
   date_of_birth: string | null
-  weight_kg: number | null
+  latest_weight_kg: number | null
+  latest_weighed_on: string | null
+  weighing_interval_days: number | null
   acquisition_date: string | null
   acquisition_type: string | null
   purpose: string
@@ -325,6 +349,11 @@ interface Animal {
 }
 
 const resource = useOfflineEntity<Animal & Record<string, any>>('animal')
+// Groups share the livestock list/show endpoints (cached under the `animal`
+// entity) but have their own delete route, so removal must go through the
+// animalGroup entity — deleting a group via the `animal` route 404s on the
+// server while succeeding locally, which is why deleted groups reappear.
+const groupResource = useOfflineEntity<Record<string, any>>('animalGroup')
 
 const animal = ref<Animal | null>(null)
 const loading = ref(true)
@@ -349,6 +378,7 @@ const saleContext = computed(() => {
 
 const tabs = [
   { key: 'overview', label: 'Costs' },
+  { key: 'weights', label: 'Weights' },
   { key: 'production', label: 'Production' },
   { key: 'treatments', label: 'Treatments' },
   { key: 'breedings', label: 'Breedings' },
@@ -376,7 +406,9 @@ const calculateAge = (dob: string) => {
 }
 
 const editAnimal = () => {
-  navigateTo(`/admin/livestock?edit=${uuid}`)
+  // Was /admin/livestock?edit=… — the list page never read that query param,
+  // so the button silently did nothing.
+  navigateTo(`/admin/livestock/add?edit=${uuid}`)
 }
 
 const confirmDelete = () => {
@@ -385,7 +417,14 @@ const confirmDelete = () => {
 
 const deleteAnimal = async () => {
   try {
-    await resource.remove(uuid)
+    if (animal.value?.tracking_type === 'group') {
+      await groupResource.remove(uuid)
+      // The group is also cached under the `animal` entity from the unified
+      // livestock list; drop that copy so it doesn't linger offline.
+      await db.deleteRecord('animal', uuid)
+    } else {
+      await resource.remove(uuid)
+    }
     navigateTo('/admin/livestock')
   } catch (err: any) {
     console.error('Failed to delete animal:', err)

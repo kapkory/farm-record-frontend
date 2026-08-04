@@ -17,6 +17,10 @@ const isOnline = ref(true)
 const lastOnline = ref<Date | null>(null)
 const pendingSyncCount = ref(0)
 const failedSyncCount = ref(0)
+/** The failed items themselves. The count alone tells a farmer that something
+ *  broke but not what or why, and the only recovery on offer was to throw the
+ *  change away — so the queue's stored `lastError` has to reach the UI. */
+const failedItems = ref<SyncQueueItem[]>([])
 /** True when sync stopped on a 401 — the session expired while offline */
 const authRequired = ref(false)
 const syncing = ref(false)
@@ -34,6 +38,10 @@ export type SyncResult =
   | { ok: false, kind: 'validation', message: string, errors: Record<string, string[]> }
   | { ok: false, kind: 'auth' }
   | { ok: false, kind: 'network' }
+  /** The server answered, and it broke. Distinct from 'network' because being
+   *  offline is normal here and a 500 is not: it will not fix itself on the
+   *  next retry, and the farmer has to be told rather than shown a success. */
+  | { ok: false, kind: 'server', message: string }
   | { ok: false, kind: 'unroutable', message: string }
 
 function statusOf(error: any): number | undefined {
@@ -75,7 +83,9 @@ function getApiFetch(): ((...args: any[]) => Promise<any>) | null {
 async function refreshCounts() {
   try {
     pendingSyncCount.value = (await db.getPending()).length
-    failedSyncCount.value = (await db.getFailed()).length
+    const failed = await db.getFailed()
+    failedSyncCount.value = failed.length
+    failedItems.value = failed
   } catch (error) {
     console.error('Error refreshing sync counts:', error)
   }
@@ -140,7 +150,8 @@ async function syncOneRequest(item: SyncQueueItem): Promise<SyncResult> {
     }
 
     // Network drop or 5xx — keep it queued, but cap retries so one poisoned
-    // item can't hot-loop forever.
+    // item can't hot-loop forever. A 5xx is still reported back to the caller
+    // (see below) so it can't masquerade as a successful offline save.
     const attempts = (item.attempts ?? 0) + 1
     if (attempts >= MAX_ATTEMPTS) {
       const message = `Gave up after ${attempts} attempts: ${error?.message ?? 'unknown error'}`
@@ -149,6 +160,19 @@ async function syncOneRequest(item: SyncQueueItem): Promise<SyncResult> {
     } else {
       await db.updateQueueItem(item.id, { attempts })
     }
+
+    // The server answered with an error rather than being unreachable. It stays
+    // queued in case it is transient, but the caller must not treat it as a
+    // normal offline save — that is how a failed write looks like a success.
+    if (typeof status === 'number' && status >= 500) {
+      const data = responseData(error)
+      return {
+        ok: false,
+        kind: 'server',
+        message: data?.message || `The server could not save this (${status}).`
+      }
+    }
+
     return { ok: false, kind: 'network' }
   }
 }
@@ -205,6 +229,36 @@ async function discardAllFailed(): Promise<void> {
   }
 }
 
+/** Put a failed item back in the queue and try it again.
+ *
+ *  The usual reason a change fails is a server-side problem the farmer has
+ *  since had fixed — a pending migration, an expired session, a bad deploy.
+ *  Without this the only way out is to discard the record and re-enter it,
+ *  which is a poor trade for data that is sitting right there. */
+async function retryFailed(id: string): Promise<void> {
+  const item = (await db.getQueue()).find(entry => entry.id === id)
+  if (!item) return
+
+  await db.updateQueueItem(id, { status: 'pending', attempts: 0, lastError: undefined })
+  await db.setRecordSynced(item.entity, item.uuid, false, null)
+  await refreshCounts()
+
+  if (isOnline.value) {
+    await syncOne({ ...item, status: 'pending', attempts: 0 })
+    await refreshCounts()
+  }
+}
+
+async function retryAllFailed(): Promise<void> {
+  for (const item of await db.getFailed()) {
+    await db.updateQueueItem(item.id, { status: 'pending', attempts: 0, lastError: undefined })
+    await db.setRecordSynced(item.entity, item.uuid, false, null)
+  }
+  await refreshCounts()
+  await syncPendingChanges()
+  await refreshCounts()
+}
+
 export const useOffline = () => {
   if (import.meta.client && !listenersRegistered) {
     listenersRegistered = true
@@ -251,12 +305,15 @@ export const useOffline = () => {
     lastOnline: readonly(lastOnline),
     pendingSyncCount: readonly(pendingSyncCount),
     failedSyncCount: readonly(failedSyncCount),
+    failedItems: readonly(failedItems),
     authRequired: readonly(authRequired),
     syncing: readonly(syncing),
     triggerSync,
     notifyAuthenticated,
     discardFailed,
     discardAllFailed,
+    retryFailed,
+    retryAllFailed,
     syncOne,
     refreshCounts,
     /** @deprecated use refreshCounts() */

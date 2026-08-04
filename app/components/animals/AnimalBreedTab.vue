@@ -154,7 +154,7 @@ interface AnimalType {
 
 interface AnimalBreed {
   id: number
-  uuid?: string
+  uuid: string
   animal_type_id: number
   name: string
   description: string | null
@@ -207,8 +207,14 @@ const submitForm = async () => {
       await $apiFetch('/sanctum/csrf-cookie')
     }
 
+    const animalTypeId = Number(form.value.animal_type_id)
+    if (!Number.isFinite(animalTypeId) || animalTypeId <= 0) {
+      alert('Please select a valid animal type')
+      return
+    }
+
     const payload = {
-      animal_type_id: form.value.animal_type_id,
+      animal_type_id: animalTypeId,
       name: form.value.name,
       description: form.value.description || null
     }
@@ -226,7 +232,7 @@ const submitForm = async () => {
       } else {
         const index = breeds.value.findIndex(b => b.uuid === editingUuid.value)
         if (index !== -1) {
-          breeds.value[index] = { ...breeds.value[index], ...payload } as AnimalBreed
+          breeds.value[index] = { ...breeds.value[index], ...payload }
         }
       }
     } else {
@@ -240,8 +246,9 @@ const submitForm = async () => {
       } else {
         newItem = {
           id: Date.now(),
+          uuid: crypto.randomUUID(),
           ...payload
-        } as AnimalBreed
+        }
       }
       breeds.value.push(newItem)
     }

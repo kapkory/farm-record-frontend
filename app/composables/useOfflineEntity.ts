@@ -21,7 +21,10 @@ export interface OfflineRecord {
 }
 
 export type MutationResult<T> =
-  | { ok: true, record: T, synced: boolean }
+  /** `warning` is set when the record was stored locally but the server
+   *  rejected it with an error — the farmer needs telling, because "saved
+   *  offline" and "the save failed" look identical otherwise. */
+  | { ok: true, record: T, synced: boolean, warning?: string }
   | { ok: false, message: string, errors: Record<string, string[]> }
 
 export const useOfflineEntity = <T extends OfflineRecord>(entity: EntityName, ctx: EntityCtx = {}) => {
@@ -128,6 +131,8 @@ export const useOfflineEntity = <T extends OfflineRecord>(entity: EntityName, ct
     }
     await db.enqueue(item)
 
+    let serverWarning: string | undefined
+
     if (isOnline.value) {
       const result = await syncOne(item)
       if (result.ok) {
@@ -145,12 +150,14 @@ export const useOfflineEntity = <T extends OfflineRecord>(entity: EntityName, ct
         await refreshCounts()
         return { ok: false, message: result.message, errors: result.errors }
       }
-      // auth/network: leave it queued, fall through to the offline path
+      if (result.kind === 'server') serverWarning = result.message
+      if (result.kind === 'auth') serverWarning = 'Sign in again to send this to the server.'
+      // auth/network/server: leave it queued, fall through to the offline path
     }
 
     items.value = [decorate(optimistic, false), ...items.value]
     await refreshCounts()
-    return { ok: true, record: optimistic, synced: false }
+    return { ok: true, record: optimistic, synced: false, warning: serverWarning }
   }
 
   /** Local-first partial update, coalesced into a pending create/update
@@ -181,6 +188,8 @@ export const useOfflineEntity = <T extends OfflineRecord>(entity: EntityName, ct
       await db.enqueue(item)
     }
 
+    let updateWarning: string | undefined
+
     const applyToItems = (record: T, synced: boolean) => {
       const idx = items.value.findIndex(i => i.uuid === uuid)
       if (idx !== -1) items.value[idx] = decorate(record, synced)
@@ -205,11 +214,13 @@ export const useOfflineEntity = <T extends OfflineRecord>(entity: EntityName, ct
         await refreshCounts()
         return { ok: false, message: result.message, errors: result.errors }
       }
+      if (result.kind === 'server') updateWarning = result.message
+      if (result.kind === 'auth') updateWarning = 'Sign in again to send this to the server.'
     }
 
     applyToItems(merged, false)
     await refreshCounts()
-    return { ok: true, record: merged, synced: false }
+    return { ok: true, record: merged, synced: false, warning: updateWarning }
   }
 
   /** Local-first delete. Deleting a record whose create is still queued
