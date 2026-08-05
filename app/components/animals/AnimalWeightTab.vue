@@ -4,10 +4,11 @@
     <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
       <div class="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 px-6 py-4">
         <div>
-          <Button type="button" @click="openModal" class="inline-flex items-center gap-2">
+          <Button v-if="canRecordWeight" type="button" @click="openModal" class="inline-flex items-center gap-2">
             <Plus class="h-4 w-4" />
             Record Weight
           </Button>
+          
           <p class="mt-1 text-sm text-gray-500">
             {{ isGroup
               ? 'Weigh a sample of the group every few weeks and record the total — the average per head is worked out for you.'
@@ -344,6 +345,7 @@ import { CloudOff, Plus, Scale, Trash2, X } from 'lucide-vue-next'
 const props = defineProps<{
   weighableUuid: string
   trackingType: 'individual' | 'group'
+  animalStatus?: string | null
   intervalDays?: number | null
   dateOfBirth?: string | null
 }>()
@@ -376,6 +378,8 @@ const {
 })
 
 const today = new Date().toISOString().split('T')[0]
+
+const canRecordWeight = computed(() => props.animalStatus !== 'sold')
 
 // Emerald-700. The brand green (#10B981) only reaches 2.5:1 against white,
 // under the 3:1 a data mark needs; this step clears it and stays on-brand.

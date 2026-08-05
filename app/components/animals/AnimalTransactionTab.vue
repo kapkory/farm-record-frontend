@@ -109,6 +109,27 @@
           <div class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
             Profit here compares costs recorded on this tab against income — both sales recorded through <span class="font-semibold">Record Sale</span> for this animal and any income entered here. Loans and owner money are not counted.
           </div>
+
+          <!-- Whole-herd costs: shared farm-wide livestock spend, shown as
+               context and deliberately NOT added to this animal's Money Out. -->
+          <div v-if="wholeHerdCosts.length" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-4">
+            <div class="flex items-center justify-between">
+              <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Whole-herd costs</p>
+              <p class="text-sm font-bold text-amber-900">{{ formatCurrency(wholeHerdTotal) }}</p>
+            </div>
+            <p class="mt-1 text-xs text-amber-800">
+              Farm-wide livestock spend covering every animal — not included in this animal's totals above.
+            </p>
+            <ul class="mt-3 space-y-2">
+              <li v-for="row in wholeHerdCosts" :key="row.id" class="flex items-start justify-between gap-2 border-t border-amber-100 pt-2 first:border-t-0 first:pt-0">
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium text-gray-900">{{ row.account_name }}</p>
+                  <p class="truncate text-xs text-gray-500">{{ row.date }}<template v-if="row.description"> · {{ row.description }}</template></p>
+                </div>
+                <span class="shrink-0 text-sm font-semibold text-gray-700">{{ formatCurrency(row.amount) }}</span>
+              </li>
+            </ul>
+          </div>
         </div>
       </aside>
     </div>
@@ -283,12 +304,14 @@
 import { Plus, X } from 'lucide-vue-next'
 import { advancedLedgerTypeOptions, isAdvancedLedgerType, primaryLedgerTypeOptions } from '../../composables/useAnimalTransactions'
 
-const props = defineProps<{ animalUuid: string; trackingType?: 'individual' | 'group' }>()
+const props = defineProps<{ animalUuid: string; trackingType?: 'individual' | 'group'; farmUuid?: string }>()
 
 const {
   ledgerTypeOptions,
   ledgerTypeConfig,
   ledgerTransactions,
+  wholeHerdCosts,
+  wholeHerdTotal,
   ledgerAccountSearch,
   showLedgerAccountResults,
   showAddLedgerModal,
@@ -322,7 +345,7 @@ const {
   openLedgerModal,
   closeLedgerModal,
   submitLedgerTransaction,
-} = useAnimalTransactions(props.animalUuid, props.trackingType ?? 'individual')
+} = useAnimalTransactions(props.animalUuid, props.trackingType ?? 'individual', props.farmUuid)
 
 // Everyday recording is just Money In / Money Out; the accounting-flavored
 // types stay reachable but out of the way.

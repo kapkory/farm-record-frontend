@@ -30,6 +30,7 @@ export const useAnimalTreatments = (animalUuid: string, trackingType: 'individua
     parentUuid: animalUuid
   })
   const { getReference } = useReferenceData()
+  const { isOnline } = useOffline()
 
   const today = () => new Date().toISOString().split('T')[0] ?? ''
 
@@ -40,10 +41,16 @@ export const useAnimalTreatments = (animalUuid: string, trackingType: 'individua
     notes: '',
     retreat_date: '',
     record_expense: false,
-    expense_amount: ''
+    expense_amount: '',
+    // Optionally draw this treatment from bulk stock instead of a manual cost.
+    use_from_stock: false,
+    input_uuid: '',
+    input_quantity_used: ''
   })
 
   const treatmentTypes = ref<AnimalTreatmentTypeOption[]>([])
+  // In-stock farm inputs the treatment can be drawn from.
+  const inputs = ref<Array<{ uuid: string, name: string, unit: string, quantity_remaining: number, unit_cost: number }>>([])
   const loading = resource.loading
   const loadError = resource.loadError
   const submitting = ref(false)
@@ -144,12 +151,33 @@ export const useAnimalTreatments = (animalUuid: string, trackingType: 'individua
 
   const fetchTreatments = () => resource.fetch()
 
+  const { $apiFetch } = useNuxtApp()
+  const fetchInputs = async () => {
+    if (!isOnline.value) return
+    try {
+      const response = await $apiFetch<any>('/api/v1/farms/farm/inputs/list?in_stock=1')
+      const data = (Array.isArray(response) ? response : response?.data) ?? []
+      inputs.value = data
+        .filter((i: any) => Number(i.quantity_remaining) > 0)
+        .map((i: any) => ({
+          uuid: i.uuid,
+          name: i.name,
+          unit: i.unit,
+          quantity_remaining: Number(i.quantity_remaining),
+          unit_cost: Number(i.unit_cost)
+        }))
+    } catch (err) {
+      console.error('Failed to load farm inputs:', err)
+    }
+  }
+
   const saveTreatment = async () => {
     submitting.value = true
     submitError.value = null
     formErrors.value = {}
     errorList.value = []
 
+    const usingStock = treatmentForm.value.use_from_stock && !!treatmentForm.value.input_uuid
     const payload = {
       model: isGroup ? 'animal_group' : 'animal',
       animal_uuid: isGroup ? null : animalUuid,
@@ -161,9 +189,15 @@ export const useAnimalTreatments = (animalUuid: string, trackingType: 'individua
       date: treatmentForm.value.date || today(),
       retreat_date: treatmentForm.value.retreat_date || null,
       notes: treatmentForm.value.notes || null,
-      record_expense: treatmentForm.value.record_expense,
-      expense_amount: treatmentForm.value.record_expense && treatmentForm.value.expense_amount
+      // Drawing from stock carries the cost via the input, so the manual
+      // expense is turned off to avoid double-counting.
+      record_expense: usingStock ? false : treatmentForm.value.record_expense,
+      expense_amount: !usingStock && treatmentForm.value.record_expense && treatmentForm.value.expense_amount
         ? Number(treatmentForm.value.expense_amount)
+        : null,
+      input_uuid: usingStock ? treatmentForm.value.input_uuid : null,
+      input_quantity_used: usingStock && treatmentForm.value.input_quantity_used
+        ? Number(treatmentForm.value.input_quantity_used)
         : null
     }
 
@@ -189,11 +223,13 @@ export const useAnimalTreatments = (animalUuid: string, trackingType: 'individua
   onMounted(() => {
     fetchTreatmentTypes()
     fetchTreatments()
+    fetchInputs()
   })
 
   return {
     treatments,
     treatmentTypes,
+    inputs,
     loading,
     loadError,
     submitting,

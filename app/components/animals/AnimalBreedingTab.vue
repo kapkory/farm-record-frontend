@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
       <div class="border-b border-gray-200 px-6 py-4">
-        <Button type="button" @click="openModal" class="inline-flex items-center gap-2">
+        <Button v-if="canRecordBreeding" type="button" @click="openModal" class="inline-flex items-center gap-2">
           <Plus class="h-4 w-4" />
           New Breeding
         </Button>
@@ -345,6 +345,7 @@ const props = defineProps<{
   trackingType: 'individual' | 'group'
   gestationDays?: number | null
   damName?: string | null
+  animalStatus?: string | null
 }>()
 
 const {
@@ -386,6 +387,9 @@ const birthTarget = ref<BreedingRecord | null>(null)
 const openBirthModal = (record: BreedingRecord) => {
   birthTarget.value = record
 }
+
+const canRecordBreeding = computed(() => props.animalStatus !== 'sold')
+
 
 const onBirthSaved = (updated: BreedingRecord, synced: boolean) => {
   const index = breedings.value.findIndex(b => b.uuid === updated.uuid)

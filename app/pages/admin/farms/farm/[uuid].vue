@@ -101,6 +101,46 @@
       </div>
     </div>
 
+    <!-- Income Overview -->
+    <div>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-2">Income</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+              <Beef class="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-gray-900">{{ formatCurrency(income.livestock) }}</p>
+              <p class="text-sm text-gray-500">Livestock income</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <Sprout class="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-gray-900">{{ formatCurrency(income.crops) }}</p>
+              <p class="text-sm text-gray-500">Crop income</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Banknote class="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-gray-900">{{ formatCurrency(income.total) }}</p>
+              <p class="text-sm text-gray-500">Total income</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Tabs Section -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200">
       <!-- Tab Navigation -->
@@ -128,6 +168,7 @@
         <Fields v-if="activeTab === 'fields'" />
         <Plantings v-if="activeTab === 'plantings'" />
         <Livestock v-if="activeTab === 'livestock'" />
+        <Costs v-if="activeTab === 'costs'" />
       </div>
     </div>
     </template>
@@ -135,14 +176,15 @@
 </template>
 
 <script lang="ts" setup>
-import { 
-  Warehouse, MapPin, Pencil, Trash2, Sprout, Beef, 
-  Ruler, CalendarDays
+import {
+  Warehouse, MapPin, Pencil, Trash2, Sprout, Beef,
+  Ruler, CalendarDays, Banknote
 } from 'lucide-vue-next'
 
 import Fields from '~/components/farms/farm/tabs/Fields.vue'
 import Plantings from '~/components/farms/farm/tabs/Plantings.vue'
 import Livestock from '~/components/farms/farm/tabs/Livestock.vue'
+import Costs from '~/components/farms/farm/tabs/Costs.vue'
 
 definePageMeta({
   middleware: ['auth'],
@@ -175,6 +217,27 @@ const loading = ref(true)
 const loadError = ref<string | null>(null)
 const farm = ref<FarmData>({})
 
+// Income split for this farm — livestock (animals + their products) vs crops.
+const income = ref({ livestock: 0, crops: 0, total: 0 })
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(value || 0)
+
+const fetchIncome = async () => {
+  try {
+    const res = await $apiFetch<any>(`/api/v1/farms/farm/sales/summary?farm_uuid=${farmId}`)
+    const rows: any[] = (res?.data ?? res)?.by_category ?? []
+    const sumOf = (cats: string[]) => rows
+      .filter(r => cats.includes(r.category))
+      .reduce((s, r) => s + Number(r.total ?? 0), 0)
+    const livestock = sumOf(['animal', 'animal_product', 'bee_product'])
+    const crops = sumOf(['crop'])
+    income.value = { livestock, crops, total: livestock + crops }
+  } catch (err) {
+    console.error('Failed to load farm income:', err)
+  }
+}
+
 onMounted(async () => {
   // This endpoint returns an aggregated farm summary (counts, next harvest),
   // not a plain record, so it is cached rather than kept in the entity store.
@@ -200,13 +263,15 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  fetchIncome()
 })
 
 // Tabs configuration
 const tabs = [
   { id: 'fields', label: 'Fields', icon: Sprout },
   { id: 'plantings', label: 'Plantings', icon: Sprout },
-  { id: 'livestock', label: 'Livestock', icon: Beef }
+  { id: 'livestock', label: 'Livestock', icon: Beef },
+  { id: 'costs', label: 'Costs', icon: Banknote }
 ]
 
 const activeTab = ref('plantings')

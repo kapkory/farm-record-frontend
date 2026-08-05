@@ -116,7 +116,19 @@ export const advancedLedgerTypeOptions = ledgerTypeOptions.slice(2)
 export const isAdvancedLedgerType = (type: string) =>
   advancedLedgerTypeOptions.some(option => option.value === type)
 
-export const useAnimalTransactions = (animalUuid: string, trackingType: 'individual' | 'group' = 'individual') => {
+export interface WholeHerdCostRow {
+  id: string
+  date: string
+  account_name: string
+  description: string | null
+  amount: number
+}
+
+export const useAnimalTransactions = (
+  animalUuid: string,
+  trackingType: 'individual' | 'group' = 'individual',
+  farmUuid?: string
+) => {
   const transactionableType = trackingType === 'group' ? 'animal_group' : 'animal'
   const resource = useOfflineEntity<LedgerTransactionListItem & { synced?: boolean }>('transaction', {
     model: transactionableType,
@@ -391,6 +403,41 @@ export const useAnimalTransactions = (animalUuid: string, trackingType: 'individ
   const fetchLedgerTransactions = () => resource.fetch()
 
   const { $apiFetch } = useNuxtApp()
+
+  // Whole-herd costs the farm carried for every animal (a dip day, a herder's
+  // wage), posted against the farm with a 'livestock' scope. Shown as context
+  // on the animal — NOT added to its Money Out, because the same amount covers
+  // the whole herd; summing it onto each animal would multi-count.
+  const wholeHerdCosts = ref<WholeHerdCostRow[]>([])
+  const wholeHerdTotal = computed(() =>
+    wholeHerdCosts.value.reduce((sum, r) => sum + r.amount, 0)
+  )
+
+  const fetchWholeHerdCosts = async () => {
+    if (!farmUuid) return
+    try {
+      const res = await $apiFetch<any>(`/api/v1/farms/farm/transactions/list/farm/${farmUuid}`)
+      const list: any[] = (Array.isArray(res) ? res : res?.data) ?? []
+      wholeHerdCosts.value = list
+        .filter(t => t.scope === 'livestock')
+        .map((t) => {
+          const entry = (t.ledger_entries ?? t.entries ?? [])[0] ?? {}
+          const account = entry.ledger_account ?? entry.ledgerAccount ?? null
+          return {
+            id: String(t.uuid ?? t.id ?? Math.random()),
+            date: t.date ?? '',
+            type: account?.type ?? 'expense',
+            account_name: account?.name ?? '—',
+            description: t.description ?? null,
+            amount: toNumberOrNull(entry.amount) ?? 0
+          }
+        })
+        .filter(r => r.type === 'expense' && r.amount > 0)
+        .map(({ type, ...row }) => row)
+    } catch {
+      wholeHerdCosts.value = []
+    }
+  }
   const fetchSaleIncome = async () => {
     try {
       const res = await $apiFetch<any>(`/api/v1/farms/farm/sales/income/${transactionableType}/${animalUuid}`)
@@ -480,6 +527,7 @@ export const useAnimalTransactions = (animalUuid: string, trackingType: 'individ
     fetchLedgerAccounts()
     fetchLedgerTransactions()
     fetchSaleIncome()
+    fetchWholeHerdCosts()
   })
 
   return {
@@ -487,6 +535,8 @@ export const useAnimalTransactions = (animalUuid: string, trackingType: 'individ
     ledgerTypeConfig,
     ledgerAccounts,
     ledgerTransactions,
+    wholeHerdCosts,
+    wholeHerdTotal,
     ledgerAccountSearch,
     showLedgerAccountResults,
     showAddLedgerModal,

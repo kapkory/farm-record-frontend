@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
       <div class="border-b border-gray-200 px-6 py-4">
-        <Button type="button" @click="openModal" class="inline-flex items-center gap-2">
+        <Button v-if="canRecordTreatment" type="button" @click="openModal" class="inline-flex items-center gap-2">
           <Plus class="h-4 w-4" />
           New Treatment
         </Button>
@@ -128,14 +128,44 @@
                 <p v-if="formErrors.notes" class="mt-1 text-xs text-red-600">{{ formErrors.notes }}</p>
               </div>
 
-              <div class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 sm:flex-row sm:items-center">
-                <label class="inline-flex items-center gap-3">
-                  <input v-model="treatmentForm.record_expense" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500" />
-                  <span class="text-sm font-medium text-gray-900">Record Expense</span>
+              <!-- Cost: either draw from bulk stock, or enter a manual amount -->
+              <div class="space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-4">
+                <label v-if="inputs.length" class="inline-flex items-center gap-3">
+                  <input v-model="treatmentForm.use_from_stock" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500" />
+                  <span class="text-sm font-medium text-gray-900">Used from stock</span>
+                  <span class="text-xs text-gray-500">draw a farm input and attribute its cost</span>
                 </label>
-                <div v-if="treatmentForm.record_expense" class="sm:w-64">
-                  <Input id="treatment_expense_amount" v-model="treatmentForm.expense_amount" type="number" min="0" step="0.01" class="w-full" placeholder="Expense Amount" />
-                  <p v-if="formErrors.expense_amount" class="mt-1 text-xs text-red-600">{{ formErrors.expense_amount }}</p>
+
+                <div v-if="treatmentForm.use_from_stock" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label class="mb-1 block text-sm font-medium text-gray-700">Input</Label>
+                    <select v-model="treatmentForm.input_uuid" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                      <option value="" disabled>Choose input</option>
+                      <option v-for="input in inputs" :key="input.uuid" :value="input.uuid">
+                        {{ input.name }} — {{ input.quantity_remaining }} {{ input.unit }} left
+                      </option>
+                    </select>
+                    <p v-if="formErrors.input_uuid" class="mt-1 text-xs text-red-600">{{ formErrors.input_uuid }}</p>
+                  </div>
+                  <div>
+                    <Label class="mb-1 block text-sm font-medium text-gray-700">Quantity used {{ selectedInput ? `(${selectedInput.unit})` : '' }}</Label>
+                    <Input v-model="treatmentForm.input_quantity_used" type="number" min="0" step="0.01" class="w-full" placeholder="e.g. 20" />
+                    <p v-if="selectedInput && treatmentForm.input_quantity_used" class="mt-1 text-xs text-gray-500">
+                      Cost: {{ formatInputCost }}
+                    </p>
+                    <p v-if="formErrors.input_quantity_used" class="mt-1 text-xs text-red-600">{{ formErrors.input_quantity_used }}</p>
+                  </div>
+                </div>
+
+                <div v-if="!treatmentForm.use_from_stock" class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <label class="inline-flex items-center gap-3">
+                    <input v-model="treatmentForm.record_expense" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500" />
+                    <span class="text-sm font-medium text-gray-900">Record Expense</span>
+                  </label>
+                  <div v-if="treatmentForm.record_expense" class="sm:w-64">
+                    <Input id="treatment_expense_amount" v-model="treatmentForm.expense_amount" type="number" min="0" step="0.01" class="w-full" placeholder="Expense Amount" />
+                    <p v-if="formErrors.expense_amount" class="mt-1 text-xs text-red-600">{{ formErrors.expense_amount }}</p>
+                  </div>
                 </div>
               </div>
 
@@ -167,10 +197,17 @@
 <script lang="ts" setup>
 import { Plus, X } from 'lucide-vue-next'
 
-const props = defineProps<{ animalUuid: string; trackingType: 'individual' | 'group' }>()
+const props = defineProps<{
+   animalUuid: string; 
+   animalStatus?: string|null;
+  trackingType: 'individual' | 'group' 
+}>()
+
+const canRecordTreatment = computed(() => props.animalStatus !== 'sold')
 
 const {
   treatments,
+  inputs,
   loading,
   loadError,
   submitting,
@@ -191,4 +228,16 @@ const {
   fetchTreatments,
   saveTreatment
 } = useAnimalTreatments(props.animalUuid, props.trackingType)
+
+const selectedInput = computed(() =>
+  inputs.value.find(i => i.uuid === treatmentForm.value.input_uuid) ?? null
+)
+
+const formatInputCost = computed(() => {
+  const input = selectedInput.value
+  const qty = Number(treatmentForm.value.input_quantity_used)
+  if (!input || !Number.isFinite(qty) || qty <= 0) return ''
+  const cost = qty * input.unit_cost
+  return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(cost)
+})
 </script>

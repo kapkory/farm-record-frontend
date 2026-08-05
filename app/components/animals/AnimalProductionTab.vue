@@ -6,7 +6,7 @@
           <h3 class="text-base font-semibold text-gray-900">Production</h3>
           <p class="mt-0.5 text-sm text-gray-500">Record everything collected — milk, eggs and more — whether or not it is sold.</p>
         </div>
-        <Button type="button" @click="openModal" class="inline-flex items-center gap-2">
+        <Button v-if="canRecordProduction" type="button" @click="openModal" class="inline-flex items-center gap-2">
           <Plus class="h-4 w-4" />
           Record Collection
         </Button>
@@ -150,7 +150,7 @@
 import { Plus, X } from 'lucide-vue-next'
 import { ANIMAL_PRODUCTS } from '../../composables/useAnimalProductions'
 
-const props = defineProps<{ animalUuid: string; trackingType?: 'individual' | 'group' }>()
+const props = defineProps<{ animalUuid: string; trackingType?: 'individual' | 'group', animalStatus ?: string | null }>()
 
 const products = ANIMAL_PRODUCTS
 
@@ -177,6 +177,8 @@ const otherProduct = ref('')
 const isCustomProduct = computed(() =>
   form.value.name === 'Other' || !products.some(p => p.value === form.value.name)
 )
+
+const canRecordProduction = computed(() => props.animalStatus !== 'sold')
 
 const isChipActive = (value: string) =>
   value === 'Other' ? isCustomProduct.value : form.value.name === value
