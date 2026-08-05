@@ -19,7 +19,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          command_timeout: 60m   # docker builds + nuxt generate prerender can be slow
+          command_timeout: 120m   # docker builds + nuxt generate prerender can be slow
           script: |
             cd ~/farm-record
             ./deploy.sh --build --migrate
