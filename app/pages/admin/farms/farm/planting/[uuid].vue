@@ -206,7 +206,10 @@
               <div class="rounded-lg border border-green-100 bg-green-50 px-4 py-2">
                 <p class="text-xs font-semibold uppercase tracking-wide text-green-700">Money In</p>
                 <p class="mt-1 text-2xl font-bold text-gray-900">{{ formatCurrency(moneyInTotal) }}</p>
-                <p class="mt-1 text-sm text-green-800">Sales and other income recorded for this planting.</p>
+                <p v-if="saleIncomeCount > 0" class="mt-1 text-sm text-green-800">
+                  Includes {{ formatCurrency(saleIncomeTotal) }} from {{ saleIncomeCount }} sale{{ saleIncomeCount === 1 ? '' : 's' }} recorded through <span class="font-semibold">Record Sale</span>.
+                </p>
+                <p v-else class="mt-1 text-sm text-green-800">Sales and other income recorded for this planting.</p>
               </div>
 
               <div class="rounded-lg border border-red-100 bg-red-50 px-4 py-4">
@@ -425,7 +428,7 @@
       </div>
     </Teleport>
 
-    <RecordSaleModal :open="showSaleModal" :context="saleContext" @close="showSaleModal = false" />
+    <RecordSaleModal :open="showSaleModal" :context="saleContext" @close="showSaleModal = false" @saved="onSaleSaved" />
   </div>
 </template>
 
@@ -513,6 +516,7 @@ type LedgerFormErrorKey =
 type LedgerValidationErrors = Partial<Record<LedgerFormErrorKey, string>>
 
 const { getReference } = useReferenceData()
+const { $apiFetch } = useNuxtApp()
 const route = useRoute()
 const router = useRouter()
 
@@ -627,7 +631,36 @@ const totalRecordedAmount = computed(() =>
   ledgerTransactions.value.reduce((sum, transaction) => sum + transaction.amount, 0)
 )
 
-const moneyInTotal = computed(() => ledgerTypeTotal('revenue'))
+// Sales recorded from the harvest section post their income against the Sale,
+// not the planting, so they don't appear in this planting's ledger list. Pull
+// the planting's sale income separately and fold it into Money In — mirroring
+// the animal Costs tab.
+const saleIncomeTotal = ref(0)
+const saleIncomeCount = ref(0)
+
+const fetchSaleIncome = async () => {
+  const uuid = planting.value?.uuid ?? plantingUuid.value
+  if (!uuid) return
+  try {
+    const res = await $apiFetch<any>(`/api/v1/farms/farm/sales/income/planting/${uuid}`)
+    saleIncomeTotal.value = Number(res?.data?.total ?? 0)
+    saleIncomeCount.value = Number(res?.data?.count ?? 0)
+  } catch {
+    saleIncomeTotal.value = 0
+    saleIncomeCount.value = 0
+  }
+}
+
+const moneyInTotal = computed(() => ledgerTypeTotal('revenue') + saleIncomeTotal.value)
+
+// After a sale is recorded from the harvest/sale flow, refresh income and the
+// ledger so Money In and the costs list reflect it immediately.
+const onSaleSaved = () => {
+  showSaleModal.value = false
+  fetchSaleIncome()
+  fetchLedgerTransactions()
+  fetchHarvests()
+}
 
 const moneyOutTotal = computed(() => ledgerTypeTotal('expense'))
 
@@ -970,5 +1003,6 @@ onMounted(() => {
   fetchLedgerAccounts()
   fetchLedgerTransactions()
   fetchHarvests()
+  fetchSaleIncome()
 })
 </script>
