@@ -166,6 +166,7 @@
         </button>
       </div>
 
+      
       <!-- Harvest history -->
       <div class="mt-10">
         <h2 class="text-lg font-semibold text-gray-900 mb-3">Recent harvests</h2>
