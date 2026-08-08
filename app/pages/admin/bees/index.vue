@@ -32,7 +32,7 @@
           Record Harvest
         </button>
         <button
-          v-if="harvestSessions.length"
+          v-if="harvestSessions.length && canViewFinances"
           class="inline-flex items-center px-4 py-2 bg-white border border-green-500 text-green-600 text-sm font-semibold rounded-lg hover:bg-green-50 transition-colors"
           @click="showSaleModal = true"
         >
@@ -48,17 +48,27 @@
       You're offline — showing hives saved on this phone. New records will send when you have network.
     </div>
 
-    <!-- Apiary picker -->
-    <div v-if="apiaries.length" class="mb-6">
-      <label class="block text-sm font-medium text-gray-700 mb-1">Apiary</label>
-      <select
-        v-model="selectedApiaryUuid"
-        class="w-full sm:w-80 rounded-lg border-gray-300 focus:border-green-500 focus:ring-green-500 text-sm"
-      >
-        <option v-for="apiary in apiaries" :key="apiary.uuid" :value="apiary.uuid">
-          {{ apiary.name }}
-        </option>
-      </select>
+    <!-- Apiary picker + honey income -->
+    <div v-if="apiaries.length" class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Apiary</label>
+        <select
+          v-model="selectedApiaryUuid"
+          class="w-full sm:w-80 rounded-lg border-gray-300 focus:border-green-500 focus:ring-green-500 text-sm"
+        >
+          <option v-for="apiary in apiaries" :key="apiary.uuid" :value="apiary.uuid">
+            {{ apiary.name }}
+          </option>
+        </select>
+      </div>
+      <div v-if="selectedApiary && canViewFinances" class="rounded-lg border border-green-100 bg-green-50 px-4 py-2 sm:text-right">
+        <p class="text-xs font-semibold uppercase tracking-wide text-green-700">Honey income</p>
+        <p class="text-xl font-bold text-gray-900">{{ formatMoney(honeyIncome) }}</p>
+        <p class="text-xs text-green-800">
+          <template v-if="honeyIncomeCount">from {{ honeyIncomeCount }} sale{{ honeyIncomeCount === 1 ? '' : 's' }}</template>
+          <template v-else>No honey sales recorded yet</template>
+        </p>
+      </div>
     </div>
 
     <!-- Empty states -->
@@ -180,6 +190,15 @@
                 class="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-xs font-medium"
               >
                 {{ harvests.productLabel(total.product) }}: {{ total.quantity }} {{ total.unit }}
+              </span>
+              <!-- Sold state. The badge itself is stock information, so
+                   everyone sees it; the amount is owner/manager only. -->
+              <span
+                v-if="session.synced !== false"
+                class="px-2 py-0.5 rounded-full text-xs font-medium"
+                :class="saleChip(session).classes"
+              >
+                {{ saleChip(session).label }}
               </span>
               <span v-if="session.synced === false" class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
                 Saved on phone
@@ -483,13 +502,14 @@
       </div>
     </div>
 
-    <RecordSaleModal :open="showSaleModal" :context="beeSaleContext" @close="showSaleModal = false" />
+    <RecordSaleModal :open="showSaleModal" :context="beeSaleContext" @close="showSaleModal = false" @saved="onBeeSaleSaved" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { Banknote, CheckCircle2, Hexagon, Plus, Scale, Settings, WifiOff, X } from 'lucide-vue-next'
 import type { HiveRecord } from '../../../composables/useHives'
+import type { BeeHarvestSession } from '../../../composables/useBeeHarvests'
 
 definePageMeta({
   middleware: ['auth'],
@@ -518,7 +538,9 @@ const NAMING_SCHEMES = [
 ] as const
 
 const showSaleModal = ref(false)
-const beeSaleContext = { category: 'bee_product', product: 'Honey', unit: 'kg' }
+
+const authStore = useAuthStore()
+const canViewFinances = computed(() => authStore.canViewFinances)
 
 const hiveResource = useHives()
 const harvests = useBeeHarvests()
@@ -555,6 +577,68 @@ const fetchApiaries = async () => {
 
 const apiaryHives = computed(() =>
   selectedApiaryUuid.value ? hiveResource.hivesForApiary(selectedApiaryUuid.value) : [])
+
+// ── Honey sales / income ─────────────────────────────────────────────────
+// Bee sales are attributed to the apiary (an animal group), so honey income
+// can be shown here and rolls into the farm's livestock income — before this,
+// bee sales carried no sellable and were untraceable per apiary.
+const beeSaleContext = computed(() => ({
+  category: 'bee_product',
+  product: 'Honey',
+  unit: 'kg',
+  sellableType: 'animal_group',
+  sellableUuid: selectedApiary.value?.uuid ?? '',
+  sellableLabel: selectedApiary.value?.name ?? 'this apiary'
+}))
+
+const honeyIncome = ref(0)
+const honeyIncomeCount = ref(0)
+
+const fetchHoneyIncome = async () => {
+  // Money is owner/manager only; staff logins get a 403 here.
+  if (!canViewFinances.value || !selectedApiary.value?.uuid) {
+    honeyIncome.value = 0
+    honeyIncomeCount.value = 0
+    return
+  }
+  try {
+    const res = await $apiFetch<any>(`/api/v1/farms/farm/sales/income/animal_group/${selectedApiary.value.uuid}`)
+    honeyIncome.value = Number(res?.data?.total ?? 0)
+    honeyIncomeCount.value = Number(res?.data?.count ?? 0)
+  } catch {
+    honeyIncome.value = 0
+    honeyIncomeCount.value = 0
+  }
+}
+
+const formatMoney = (value: number) =>
+  new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(value || 0)
+
+/** Sold state for a harvest session. Owners/managers also get the amount;
+ *  staff see only whether it has been sold. */
+const saleChip = (session: BeeHarvestSession): { label: string, classes: string } => {
+  const amount = session.sale_total
+  const withAmount = (text: string) =>
+    canViewFinances.value && amount ? `${text} · ${formatMoney(amount)}` : text
+
+  switch (session.sale_status) {
+    case 'sold':
+      return { label: withAmount('Sold'), classes: 'bg-green-100 text-green-800' }
+    case 'part':
+      return {
+        label: withAmount(`Part sold (${session.sold_line_count ?? 0}/${session.line_count ?? 0})`),
+        classes: 'bg-amber-100 text-amber-800'
+      }
+    default:
+      return { label: 'Not sold', classes: 'bg-gray-100 text-gray-500' }
+  }
+}
+
+const onBeeSaleSaved = () => {
+  showSaleModal.value = false
+  fetchHoneyIncome()
+  harvests.fetchSessions()
+}
 
 // ── Add hive ─────────────────────────────────────────────────────────────
 const openHiveModal = () => {
@@ -763,6 +847,7 @@ const saveProfile = async (closeOnSuccess = true): Promise<boolean> => {
 watch(selectedApiaryUuid, () => {
   cancelHarvest()
   fetchProfile()
+  fetchHoneyIncome()
 })
 
 onMounted(async () => {
@@ -770,5 +855,6 @@ onMounted(async () => {
   hiveResource.fetchHives()
   harvests.fetchSessions()
   fetchProfile()
+  fetchHoneyIncome()
 })
 </script>

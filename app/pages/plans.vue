@@ -26,13 +26,17 @@
           Simple plans for every <span class="text-farm-green">farm</span>
         </h1>
         <p class="mx-auto mt-4 max-w-2xl text-lg text-gray-600">
-          Every plan starts with a <span class="font-semibold text-farm-green">14-day free trial</span>.
-          No payment needed today — pay later by M-Pesa, bank or cash and our team activates your plan.
+          <span class="font-semibold text-farm-green">Free for {{ trialMonths }} months</span> while we are in testing —
+          every feature, no limits, no payment details needed.
         </p>
       </div>
 
-      <!-- Plan cards -->
-      <div class="grid grid-cols-1 gap-6 md:grid-cols-3 items-stretch">
+      <!-- Plan cards. A single plan (the free trial while we test) centres
+           rather than stretching across a three-column grid. -->
+      <div
+        class="grid grid-cols-1 gap-6 items-stretch"
+        :class="plans.length > 1 ? 'md:grid-cols-3' : 'mx-auto max-w-md'"
+      >
         <div
           v-for="plan in plans"
           :key="plan.slug"
@@ -49,7 +53,11 @@
           <h2 class="text-xl font-bold text-gray-900">{{ plan.name }}</h2>
           <p v-if="plan.description" class="mt-1 text-sm text-gray-500">{{ plan.description }}</p>
 
-          <p class="mt-4 text-4xl font-bold text-gray-900">
+          <p v-if="Number(plan.price) === 0" class="mt-4 text-4xl font-bold text-gray-900">
+            Free
+            <span class="text-base font-medium text-gray-500">for {{ Math.round((plan.trial_days ?? 180) / 30) }} months</span>
+          </p>
+          <p v-else class="mt-4 text-4xl font-bold text-gray-900">
             KES {{ Number(plan.price).toLocaleString('en-KE') }}
             <span class="text-base font-medium text-gray-500">/{{ plan.interval === 'yearly' ? 'year' : 'month' }}</span>
           </p>
@@ -72,7 +80,7 @@
             class="mt-4 w-full rounded-lg py-3 text-center text-sm font-semibold transition-colors"
             :class="plan.slug === 'professional' ? 'bg-green-500 text-white hover:bg-green-600' : 'border-2 border-green-500 text-green-600 hover:bg-green-50'"
           >
-            Start {{ plan.trial_days }}-day free trial
+            {{ Number(plan.price) === 0 ? 'Get started free' : `Start ${plan.trial_days}-day free trial` }}
           </NuxtLink>
         </div>
       </div>
@@ -81,7 +89,7 @@
       <div class="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3 text-center">
         <div>
           <p class="text-sm font-semibold text-gray-900">No card required</p>
-          <p class="mt-1 text-sm text-gray-500">Try everything free for 14 days before paying anything.</p>
+          <p class="mt-1 text-sm text-gray-500">Try everything free for {{ trialMonths }} months before paying anything.</p>
         </div>
         <div>
           <p class="text-sm font-semibold text-gray-900">Pay how you like</p>
@@ -106,13 +114,15 @@
 <script setup lang="ts">
 const { plans, fetchPublicPlans } = usePublicPlans()
 
+const trialMonths = computed(() => Math.round((plans.value[0]?.trial_days ?? 180) / 30))
+
 onMounted(fetchPublicPlans)
 
 useSeoMeta({
   title: 'Plans & Pricing — Farmconsul',
-  description: 'Simple KES plans for every farm. Start a 14-day free trial — track crops, livestock, sales and money, even offline.',
+  description: 'Free for 6 months while we are in testing — track crops, livestock, sales and money, even offline.',
   ogTitle: 'Plans & Pricing — Farmconsul',
-  ogDescription: 'Simple KES plans for every farm. Start a 14-day free trial — track crops, livestock, sales and money, even offline.',
+  ogDescription: 'Free for 6 months while we are in testing — track crops, livestock, sales and money, even offline.',
   ogUrl: 'https://farmconsul.com/plans',
 })
 

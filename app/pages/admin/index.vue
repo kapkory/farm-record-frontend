@@ -329,6 +329,7 @@ definePageMeta({
 
 const { getReference } = useReferenceData()
 const authStore = useAuthStore()
+const canViewFinances = computed(() => authStore.canViewFinances)
 
 const loading = ref(true)
 const farms = ref([])
@@ -396,14 +397,15 @@ const statCards = computed(() => [
     iconBg: 'bg-orange-50',
     iconColor: 'text-orange-600',
   },
-  {
+  // Money is owner/manager business — staff logins get no farm totals.
+  ...(canViewFinances.value ? [{
     label: 'Money In (7 days)',
     value: weekSalesTotal.value === null ? '—' : `KES ${Number(weekSalesTotal.value).toLocaleString('en-KE', { maximumFractionDigits: 0 })}`,
     sub: 'from recorded sales',
     icon: Banknote,
     iconBg: 'bg-blue-50',
     iconColor: 'text-blue-600',
-  },
+  }] : []),
 ])
 
 // --- Computed helpers ---
@@ -503,12 +505,14 @@ async function fetchDashboardData() {
   // Separate fetches: these endpoints return objects/lists that don't fit
   // the reference cache like the others.
   const { $apiFetch } = useNuxtApp()
-  try {
-    const from = (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().split('T')[0] })()
-    const res = await $apiFetch(`/api/v1/farms/farm/sales/summary?from=${from}`)
-    weekSalesTotal.value = res?.data?.total_amount ?? null
-  } catch {
-    weekSalesTotal.value = null
+  if (canViewFinances.value) {
+    try {
+      const from = (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().split('T')[0] })()
+      const res = await $apiFetch(`/api/v1/farms/farm/sales/summary?from=${from}`)
+      weekSalesTotal.value = res?.data?.total_amount ?? null
+    } catch {
+      weekSalesTotal.value = null
+    }
   }
 
   try {

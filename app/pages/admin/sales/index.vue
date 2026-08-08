@@ -243,7 +243,7 @@ import type { SaleRecord } from '../../../composables/useSales'
 
 definePageMeta({
   layout: 'admin',
-  middleware: ['auth'],
+  middleware: ['auth', 'finance'],
 })
 
 const {

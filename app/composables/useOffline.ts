@@ -8,7 +8,7 @@
 // so replaying a request after a mid-flight network drop cannot duplicate
 // records.
 import { ref, readonly } from 'vue'
-import { db, type SyncQueueItem } from '../utils/db'
+import { currentUserUuid, db, type SyncQueueItem } from '../utils/db'
 import { getEntityConfig } from '../utils/offline/registry'
 
 const MAX_ATTEMPTS = 10
@@ -109,6 +109,20 @@ function syncOne(item: SyncQueueItem): Promise<SyncResult> {
 async function syncOneRequest(item: SyncQueueItem): Promise<SyncResult> {
   const apiFetch = getApiFetch()
   if (!apiFetch) return { ok: false, kind: 'network' }
+
+  // A change belongs to whoever queued it. Replaying someone else's under the
+  // current sign-in posts their farm ids to an account that cannot reach them,
+  // which the API rejects with a 404 that then looks like a broken save. Park
+  // it as failed with a message that says what actually happened, so it can be
+  // discarded — or synced once that person signs back in on this device.
+  const owner = item.userUuid
+  const signedIn = currentUserUuid()
+  if (owner && signedIn && owner !== signedIn) {
+    const message = 'Saved by a different account on this device — sign in as that user to send it, or discard it.'
+    await db.updateQueueItem(item.id, { status: 'failed', lastError: message })
+    await db.setRecordSynced(item.entity, item.uuid, false, message)
+    return { ok: false, kind: 'validation', message, errors: {} }
+  }
 
   const request = buildRequest(item)
   if (!request) {

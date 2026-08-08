@@ -1,4 +1,5 @@
 import type { Farmer } from "~/types/auth";
+import { CURRENT_USER_KEY, db } from "../utils/db";
 
 interface LoginCredentials {
   email: string;
@@ -42,6 +43,12 @@ export const useAuthStore = defineStore('authStore', () => {
   const currentFarmer = computed(() => farmer.value);
   const isLoggedIn = computed(() => isAuthenticated.value);
   const isSuperAdmin = computed(() => !!farmer.value?.is_superadmin);
+  /** Money screens (sales, costs, totals) are owner/manager only. The API
+   *  enforces this too — this just keeps the UI honest. */
+  const canViewFinances = computed(() => farmer.value?.can_view_finances !== false);
+  /** null/undefined = unrestricted; otherwise only these farms are visible. */
+  const allowedFarmUuids = computed(() => farmer.value?.allowed_farm_uuids ?? null);
+  const isFarmLimited = computed(() => (allowedFarmUuids.value?.length ?? 0) > 0);
   const authError = computed(() => error.value);
   const authLoading = computed(() => isLoading.value);
 
@@ -125,6 +132,25 @@ export const useAuthStore = defineStore('authStore', () => {
       const userData = await apiFetch<Farmer>('/api/user', {
         method: 'GET',
       });
+
+      // A different person signing in on this device must not inherit the
+      // previous session's cached rows — those can include farms and money
+      // this user is not allowed to see, still readable offline.
+      if (import.meta.client && userData?.uuid) {
+        const lastUuid = localStorage.getItem(CURRENT_USER_KEY);
+        // Purge when the user changed, and also when we have no record of who
+        // the cache belongs to — unproven provenance is the same risk, and it
+        // is what let one account's farm list leak into another's forms. Only
+        // cached reads are dropped; queued work is kept and is owner-stamped.
+        if (lastUuid !== userData.uuid) {
+          try {
+            await db.clearUserData();
+          } catch (purgeErr) {
+            console.warn('Failed to clear cached data on user switch:', purgeErr);
+          }
+        }
+        localStorage.setItem(CURRENT_USER_KEY, userData.uuid);
+      }
 
       farmer.value = userData;
       isAuthenticated.value = true;
@@ -277,6 +303,9 @@ export const useAuthStore = defineStore('authStore', () => {
     currentFarmer,
     isLoggedIn,
     isSuperAdmin,
+    canViewFinances,
+    allowedFarmUuids,
+    isFarmLimited,
     authError,
     authLoading,
     isInitialized,

@@ -101,8 +101,8 @@
       </div>
     </div>
 
-    <!-- Income Overview -->
-    <div>
+    <!-- Income Overview (money — hidden from staff logins) -->
+    <div v-if="canViewFinances">
       <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-2">Income</h2>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -168,7 +168,7 @@
         <Fields v-if="activeTab === 'fields'" />
         <Plantings v-if="activeTab === 'plantings'" />
         <Livestock v-if="activeTab === 'livestock'" />
-        <Costs v-if="activeTab === 'costs'" />
+        <Costs v-if="activeTab === 'costs' && canViewFinances" />
       </div>
     </div>
     </template>
@@ -211,6 +211,8 @@ interface FarmData {
 
 const route = useRoute()
 const { $apiFetch } = useNuxtApp()
+const authStore = useAuthStore()
+const canViewFinances = computed(() => authStore.canViewFinances)
 const farmId = route.params.uuid
 
 const loading = ref(true)
@@ -224,6 +226,8 @@ const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(value || 0)
 
 const fetchIncome = async () => {
+  // Staff logins get a 403 here; don't even ask.
+  if (!canViewFinances.value) return
   try {
     const res = await $apiFetch<any>(`/api/v1/farms/farm/sales/summary?farm_uuid=${farmId}`)
     const rows: any[] = (res?.data ?? res)?.by_category ?? []
@@ -266,13 +270,13 @@ onMounted(async () => {
   fetchIncome()
 })
 
-// Tabs configuration
-const tabs = [
+// Tabs configuration — the Costs tab is money, so staff logins never see it.
+const tabs = computed(() => [
   { id: 'fields', label: 'Fields', icon: Sprout },
   { id: 'plantings', label: 'Plantings', icon: Sprout },
   { id: 'livestock', label: 'Livestock', icon: Beef },
-  { id: 'costs', label: 'Costs', icon: Banknote }
-]
+  ...(canViewFinances.value ? [{ id: 'costs', label: 'Costs', icon: Banknote }] : [])
+])
 
 const activeTab = ref('plantings')
 </script>

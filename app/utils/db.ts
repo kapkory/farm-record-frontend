@@ -42,9 +42,24 @@ export interface SyncQueueItem {
   attempts: number
   status: SyncStatus
   lastError?: string
+  /**
+   * The user who queued this change. A change belongs to whoever created it:
+   * replaying it under a different sign-in sends their farm ids to an account
+   * that cannot reach them, which the API rightly rejects. Absent on rows
+   * queued before this was recorded — those are treated as "current user".
+   */
+  userUuid?: string
 }
 
 const recordKey = (entity: string, uuid: string) => `${entity}:${uuid}`
+
+/** uuid of the signed-in user, as recorded by the auth store on sign-in. */
+export const CURRENT_USER_KEY = 'fm_last_user_uuid'
+
+export const currentUserUuid = (): string | undefined => {
+  if (!import.meta.client) return undefined
+  return localStorage.getItem(CURRENT_USER_KEY) ?? undefined
+}
 
 /**
  * IndexedDB's structured clone rejects Vue reactivity proxies (and
@@ -242,7 +257,14 @@ class FarmManageDB {
 
   async enqueue(item: SyncQueueItem): Promise<void> {
     const store = await this.tx('syncQueue', 'readwrite')
-    store.put({ ...item, payload: toPlain(item.payload) })
+    store.put({
+      ...item,
+      // Stamp the owner once, here, rather than at every call site. Kept as a
+      // plain localStorage read so the storage layer stays free of store
+      // dependencies; the auth store writes this key on sign-in.
+      userUuid: item.userUuid ?? currentUserUuid(),
+      payload: toPlain(item.payload)
+    })
     return this.complete(store)
   }
 
@@ -314,6 +336,23 @@ class FarmManageDB {
     const store = await this.tx('cache', 'readwrite')
     store.delete(key)
     return this.complete(store)
+  }
+
+  /**
+   * Wipe every locally held record and cached list. Used when a different
+   * user signs in on the same device: the previous session's rows may include
+   * farms and money the new user is not allowed to see, and they would
+   * otherwise still be readable from IndexedDB while offline.
+   *
+   * The sync queue is deliberately left alone — unsent work belongs to
+   * whoever created it and must still reach the server.
+   */
+  async clearUserData(): Promise<void> {
+    for (const storeName of ['records', 'cache'] as const) {
+      const store = await this.tx(storeName, 'readwrite')
+      store.clear()
+      await this.complete(store)
+    }
   }
 }
 

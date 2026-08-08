@@ -43,7 +43,7 @@
           </div>
           <div class="flex gap-2">
             <button
-              v-if="hasHarvests"
+              v-if="hasHarvests && canViewFinances"
               class="inline-flex items-center gap-2 rounded-md border border-green-500 bg-white px-3 py-2 text-sm font-medium text-green-600 transition-colors hover:bg-green-50"
               @click="showSaleModal = true"
             >
@@ -555,7 +555,10 @@ const saleContext = computed(() => ({
 }))
 const loading = ref(true)
 const error = ref<string | null>(null)
-const activeTab = ref<PlantingTab>('overview')
+const authStore = useAuthStore()
+const canViewFinances = computed(() => authStore.canViewFinances)
+
+const activeTab = ref<PlantingTab>(canViewFinances.value ? 'overview' : 'treatments')
 const showAddLedgerModal = ref(false)
 const ledgerSubmitting = ref(false)
 const ledgerSubmitError = ref<string | null>(null)
@@ -568,12 +571,13 @@ const ledgerTransactions = computed<LedgerTransactionRow[]>(() =>
 const ledgerAccountSearch = ref('')
 const showLedgerAccountResults = ref(false)
 
-const plantingTabs: Array<{ value: PlantingTab; label: string }> = [
-  { value: 'overview', label: 'Overview' },
+// The Overview tab is the costs-and-money view, so staff logins don't get it.
+const plantingTabs = computed<Array<{ value: PlantingTab; label: string }>>(() => [
+  ...(canViewFinances.value ? [{ value: 'overview' as PlantingTab, label: 'Overview' }] : []),
   { value: 'treatments', label: 'Treatments' },
   { value: 'tasks', label: 'Tasks' },
   { value: 'harvests', label: 'Harvests' }
-]
+])
 
 const defaultLedgerForm = () => ({
   type: 'expense' as LedgerType,
@@ -640,7 +644,8 @@ const saleIncomeCount = ref(0)
 
 const fetchSaleIncome = async () => {
   const uuid = planting.value?.uuid ?? plantingUuid.value
-  if (!uuid) return
+  // Staff logins are blocked from money endpoints; don't call them.
+  if (!uuid || !canViewFinances.value) return
   try {
     const res = await $apiFetch<any>(`/api/v1/farms/farm/sales/income/planting/${uuid}`)
     saleIncomeTotal.value = Number(res?.data?.total ?? 0)
@@ -965,7 +970,8 @@ const fetchLedgerAccounts = async () => {
   }
 }
 
-const fetchLedgerTransactions = () => transactionResource.fetch()
+const fetchLedgerTransactions = () =>
+  canViewFinances.value ? transactionResource.fetch() : Promise.resolve([])
 
 const fetchHarvests = () => harvestResource.fetch()
 

@@ -6,7 +6,10 @@
         <h1 class="text-2xl font-bold text-gray-900">Farm Inputs</h1>
         <p class="text-sm text-gray-500 mt-1">Dip, drugs, vaccines and feed bought in bulk — track stock and what each use cost.</p>
       </div>
+      <!-- Recording a purchase posts an expense, so it stays with owners
+           and managers; staff can still draw stock down with "Use". -->
       <button
+        v-if="canViewFinances"
         class="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-lg transition-colors"
         @click="openAdd"
       >
@@ -41,7 +44,7 @@
       <Boxes class="w-10 h-10 text-green-400 mx-auto mb-3" />
       <h2 class="text-lg font-semibold text-gray-900 mb-1">No inputs yet</h2>
       <p class="text-sm text-gray-500 mb-4">Record a bulk purchase — a tin of dip, a bag of feed — then log each time you use it.</p>
-      <button class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-lg" @click="openAdd">
+      <button v-if="canViewFinances" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-lg" @click="openAdd">
         <Plus class="w-4 h-4 mr-2" />
         Add Input
       </button>
@@ -65,8 +68,11 @@
             <p class="text-xs text-gray-500 mt-1">
               Bought {{ input.purchase_date_human ?? input.purchase_date ?? '—' }}
               <template v-if="input.supplier"> · {{ input.supplier }}</template>
-              · {{ formatCurrency(input.total_cost) }} for {{ fmtQty(input.quantity) }} {{ input.unit }}
-              ({{ formatCurrency(input.unit_cost) }}/{{ input.unit }})
+              <template v-if="canViewFinances">
+                · {{ formatCurrency(input.total_cost) }} for {{ fmtQty(input.quantity) }} {{ input.unit }}
+                ({{ formatCurrency(input.unit_cost) }}/{{ input.unit }})
+              </template>
+              <template v-else> · {{ fmtQty(input.quantity) }} {{ input.unit }} bought</template>
             </p>
             <!-- Stock bar -->
             <div class="mt-2">
@@ -90,8 +96,8 @@
               <MinusCircle class="w-4 h-4 mr-1.5" />
               Use
             </button>
-            <button class="p-2 text-gray-400 hover:text-gray-700" title="Edit" @click="inputsResource.openEditModal(input)"><Pencil class="w-4 h-4" /></button>
-            <button class="p-2 text-gray-400 hover:text-red-500" title="Delete" @click="confirmDelete(input)"><Trash2 class="w-4 h-4" /></button>
+            <button v-if="canViewFinances" class="p-2 text-gray-400 hover:text-gray-700" title="Edit" @click="inputsResource.openEditModal(input)"><Pencil class="w-4 h-4" /></button>
+            <button v-if="canViewFinances" class="p-2 text-gray-400 hover:text-red-500" title="Delete" @click="confirmDelete(input)"><Trash2 class="w-4 h-4" /></button>
             <button
               v-if="input.applications_count"
               class="p-2 text-gray-400 hover:text-gray-700"
@@ -109,7 +115,7 @@
           <div v-for="app in input.applications" :key="app.uuid" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 rounded-lg bg-white px-3 py-2 border border-gray-100">
             <div class="min-w-0">
               <p class="text-sm text-gray-900">
-                {{ fmtQty(app.quantity_used) }} {{ input.unit }} · {{ formatCurrency(app.total_cost) }}
+                {{ fmtQty(app.quantity_used) }} {{ input.unit }}<template v-if="canViewFinances"> · {{ formatCurrency(app.total_cost) }}</template>
                 <span class="text-gray-400">· {{ inputsResource.basisLabel(app.allocation_basis) }}</span>
               </p>
               <p class="text-xs text-gray-500">
@@ -218,7 +224,7 @@
               <input v-model.number="applyForm.quantity_used" type="number" min="0" step="0.01" inputmode="decimal" class="w-full rounded-lg border-gray-300 text-sm">
             </div>
           </div>
-          <p v-if="applyForm.quantity_used && inputsResource.applyTarget.value?.unit_cost" class="text-xs text-gray-500">
+          <p v-if="canViewFinances && applyForm.quantity_used && inputsResource.applyTarget.value?.unit_cost" class="text-xs text-gray-500">
             Cost of this use: <strong>{{ formatCurrency(Number(applyForm.quantity_used) * Number(inputsResource.applyTarget.value.unit_cost)) }}</strong>
           </p>
 
@@ -296,6 +302,10 @@ useHead({ title: 'Farm Inputs - FarmManage Pro Admin' })
 
 const { getReference } = useReferenceData()
 const { isOnline } = useOffline()
+// Staff can see and use stock — they need levels to record usage — but the
+// purchase costs stay with owners and managers.
+const authStore = useAuthStore()
+const canViewFinances = computed(() => authStore.canViewFinances)
 
 const inputsResource = useFarmInputs()
 const inputs = inputsResource.inputs

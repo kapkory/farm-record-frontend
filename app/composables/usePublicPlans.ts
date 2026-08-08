@@ -6,10 +6,33 @@
 // registration submitted against them simply starts without a plan.
 import type { BillingPlan } from './useBilling'
 
+/**
+ * Mirrors the seeded catalogue so prerendered HTML has real content before the
+ * live endpoint answers. Keep this in step with PlansSeeder — while the
+ * product is in testing that is a single free six-month plan, so the register
+ * page must not flash a paid picker on first paint.
+ */
 export const FALLBACK_PLANS: BillingPlan[] = [
-  { uuid: '', slug: 'starter', name: 'Starter', price: 2500, currency: 'KES', interval: 'monthly', trial_days: 14, description: 'For a single small farm getting started.', features: ['Basic crop tracking', 'Up to 50 animals', 'Record sales and costs', 'Offline mobile app'], max_farms: 1, max_animals: 50, max_users: 2 },
-  { uuid: '', slug: 'professional', name: 'Professional', price: 5000, currency: 'KES', interval: 'monthly', trial_days: 14, description: 'For growing farms that need the full toolkit.', features: ['Everything in Starter', 'Up to 5 farms', 'Breeding & treatment planning', 'Reports and profitability', 'Team roles'], max_farms: 5, max_animals: 500, max_users: 10 },
-  { uuid: '', slug: 'enterprise', name: 'Enterprise', price: 10000, currency: 'KES', interval: 'monthly', trial_days: 14, description: 'For cooperatives and large operations.', features: ['Everything in Professional', 'Unlimited farms & animals', 'Unlimited team members', 'Priority support'], max_farms: null, max_animals: null, max_users: null }
+  {
+    uuid: '',
+    slug: 'free-trial',
+    name: 'Free Trial',
+    price: 0,
+    currency: 'KES',
+    interval: 'monthly',
+    trial_days: 180,
+    description: 'Full access to everything while we are in testing. Six months free, no payment details needed.',
+    features: [
+      'Every feature, no limits',
+      'Unlimited farms, animals and team members',
+      'Crops, livestock, bees and beekeeping',
+      'Sales, costs and profitability',
+      'Offline mobile app'
+    ],
+    max_farms: null,
+    max_animals: null,
+    max_users: null
+  }
 ]
 
 export const planLimitsLabel = (plan: BillingPlan) => {

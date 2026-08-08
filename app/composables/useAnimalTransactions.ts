@@ -524,6 +524,9 @@ export const useAnimalTransactions = (
   }
 
   onMounted(() => {
+    // Staff logins are blocked from money endpoints server-side — skip the
+    // calls rather than firing a burst of 403s.
+    if (!useAuthStore().canViewFinances) return
     fetchLedgerAccounts()
     fetchLedgerTransactions()
     fetchSaleIncome()

@@ -64,8 +64,9 @@
         <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
           <h2 class="text-xl font-bold text-gray-900">Create your account</h2>
 
-          <!-- Plan picker — name and price only; details live on /plans -->
-          <div class="mt-3">
+          <!-- While we are testing there is a single free plan, so there is
+               nothing to choose — just say what they are getting. -->
+          <div v-if="hasChoice" class="mt-3">
             <div class="grid grid-cols-3 gap-2">
               <button
                 v-for="plan in plans"
@@ -84,6 +85,19 @@
               <NuxtLink to="/plans" class="font-medium text-green-600 hover:text-green-700">compare plans</NuxtLink>
             </p>
             <p v-if="errors.plan_uuid" class="text-xs text-red-500 mt-1">{{ errors.plan_uuid }}</p>
+          </div>
+
+          <div v-else class="mt-3 rounded-xl border-2 border-green-200 bg-green-50 px-4 py-3">
+            <div class="flex items-start gap-2.5">
+              <Gift class="h-5 w-5 shrink-0 text-green-600" />
+              <div>
+                <p class="text-sm font-semibold text-green-800">{{ trialMonths }} months free</p>
+                <p class="mt-0.5 text-xs text-green-700">
+                  Every feature, no limits, no payment details needed. We'll let you know
+                  well before your free period ends.
+                </p>
+              </div>
+            </div>
           </div>
 
           <!-- Registration Form -->
@@ -198,6 +212,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { Gift } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -219,7 +234,9 @@ const farmTypes = [
 // Selection is tracked by slug so the static fallback catalogue (which has
 // no uuids yet) still resolves; the uuid is looked up at submit time.
 const form = ref({
-  plan_slug: 'professional',
+  // Filled in from the live catalogue on mount; while testing there is a
+  // single free plan, so this is just the first one.
+  plan_slug: '',
   name: '',
   email: '',
   phone: '',
@@ -245,6 +262,15 @@ const isSubmitting = ref(false)
 const isLoading = computed(() => authStore.authLoading || isSubmitting.value)
 const selectedPlan = computed(() => plans.value.find(p => p.slug === form.value.plan_slug))
 
+// With a single plan on offer there is nothing to choose — show what they get
+// instead of a one-option picker. The picker returns on its own when more
+// plans are activated.
+const hasChoice = computed(() => plans.value.length > 1)
+const trialMonths = computed(() => {
+  const days = plans.value[0]?.trial_days ?? 180
+  return Math.round(days / 30)
+})
+
 onMounted(async () => {
   // Read ?plan= on the client only — the page is prerendered without a query.
   const requested = String(route.query.plan ?? '')
@@ -261,7 +287,9 @@ const validateForm = () => {
   let isValid = true
   errors.value = emptyErrors()
 
-  if (!form.value.plan_slug) {
+  // Only ask them to pick when there is actually a choice; otherwise the
+  // backend puts them on the default free plan.
+  if (hasChoice.value && !form.value.plan_slug) {
     errors.value.plan_uuid = 'Please choose a plan to continue'
     isValid = false
   }
@@ -342,9 +370,9 @@ definePageMeta({
 
 useSeoMeta({
   title: 'Create a Free Account — Farmconsul',
-  description: 'Join Farmconsul and manage crops, livestock, workers and harvests from your phone — even offline. Every plan starts with a 14-day free trial.',
+  description: 'Join Farmconsul and manage crops, livestock, workers and harvests from your phone — even offline. Free for 6 months, with every feature included.',
   ogTitle: 'Create a Free Account — Farmconsul',
-  ogDescription: 'Join Farmconsul and manage crops, livestock, workers and harvests from your phone — even offline. Every plan starts with a 14-day free trial.',
+  ogDescription: 'Join Farmconsul and manage crops, livestock, workers and harvests from your phone — even offline. Free for 6 months, with every feature included.',
   ogUrl: 'https://farmconsul.com/register',
 })
 

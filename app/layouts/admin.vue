@@ -134,8 +134,9 @@
           <span class="font-medium">Bees</span>
         </NuxtLink>
 
-        <!-- Sales -->
+        <!-- Sales (money — hidden from staff logins) -->
         <NuxtLink
+          v-if="canViewFinances"
           to="/admin/sales"
           class="flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
           :class="{'bg-green-50 text-green-600': $route.path.startsWith('/admin/sales')}"
@@ -188,7 +189,8 @@
             >
               Production Reports
             </NuxtLink>
-            <NuxtLink 
+            <NuxtLink
+              v-if="canViewFinances"
               to="/admin/reports/financial"
               class="flex items-center px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
             >
@@ -478,6 +480,9 @@ import { ref, computed } from 'vue'
 
 // Use Pinia auth store
 const authStore = useAuthStore()
+
+// Staff logins do not see money screens. The API enforces this too.
+const canViewFinances = computed(() => authStore.canViewFinances)
 
 const sidebarOpen = ref(false)
 const showNotifications = ref(false)

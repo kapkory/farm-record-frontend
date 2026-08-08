@@ -72,7 +72,7 @@
         </div>
         <div class="mt-4 sm:mt-0 flex gap-2">
           <Button
-            v-if="animal.status === 'active'"
+            v-if="animal.status === 'active' && canViewFinances"
             variant="outline"
             class="text-green-600 border-green-300 hover:bg-green-50"
             @click="showSaleModal = true"
@@ -370,7 +370,10 @@ const groupResource = useOfflineEntity<Record<string, any>>('animalGroup')
 const animal = ref<Animal | null>(null)
 const loading = ref(true)
 const loadError = ref<string | null>(null)
-const activeTab = ref('overview')
+const authStore = useAuthStore()
+const canViewFinances = computed(() => authStore.canViewFinances)
+
+const activeTab = ref(canViewFinances.value ? 'overview' : 'weights')
 const showDeleteConfirm = ref(false)
 const showSaleModal = ref(false)
 
@@ -388,15 +391,16 @@ const saleContext = computed(() => {
   }
 })
 
-const tabs = [
-  { key: 'overview', label: 'Costs' },
+// Costs is a money view — staff logins never see it, and land on Weights.
+const tabs = computed(() => [
+  ...(canViewFinances.value ? [{ key: 'overview', label: 'Costs' }] : []),
   { key: 'weights', label: 'Weights' },
   { key: 'production', label: 'Production' },
   { key: 'treatments', label: 'Treatments' },
   { key: 'breedings', label: 'Breedings' },
   { key: 'tasks', label: 'Tasks' },
   { key: 'activity', label: 'Activity' }
-]
+])
 
 const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString('en-US', {

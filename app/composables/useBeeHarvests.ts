@@ -26,6 +26,12 @@ export interface BeeHarvestSession {
   }>
   notes?: string | null
   warnings?: string[]
+  /** Whether this harvest has been sold: none of it, some, or all. */
+  sale_status?: 'unsold' | 'part' | 'sold'
+  sold_line_count?: number
+  line_count?: number
+  /** Null for staff logins — the money is owner/manager only. */
+  sale_total?: number | null
   synced?: boolean
   sync_error?: string | null
 }

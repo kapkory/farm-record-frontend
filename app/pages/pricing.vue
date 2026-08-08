@@ -7,7 +7,7 @@
           <div class="flex items-center space-x-3">
             <div class="w-10 h-10 bg-farm-green rounded-full flex items-center justify-center">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
               </svg>
             </div>
@@ -15,7 +15,7 @@
               <h1 class="text-xl font-bold text-gray-900">Farmconsul</h1>
             </div>
           </div>
-          
+
           <div class="flex items-center space-x-4">
             <NuxtLink to="/login" class="text-gray-600 hover:text-gray-900 font-medium">
               Sign In
@@ -34,375 +34,114 @@
         <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
           Simple, Transparent Pricing
         </h1>
-        <p class="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-          Choose the perfect plan for your farm. No hidden fees, no surprises. 
-          All plans include a 14-day free trial.
+        <p v-if="isFreeOnly" class="text-xl text-gray-600 max-w-3xl mx-auto">
+          <span class="font-semibold text-farm-green">Free for {{ trialMonths }} months</span> while we are in testing —
+          every feature, no limits, no payment details needed.
         </p>
-        
-        <!-- Billing Toggle -->
-        <div class="flex items-center justify-center space-x-4 mb-12">
-          <span class="text-gray-700 font-medium" :class="{ 'text-farm-green': !isAnnual }">
-            Monthly
-          </span>
-          <button 
-            @click="isAnnual = !isAnnual"
-            class="relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-farm-green focus:ring-offset-2"
-            :class="isAnnual ? 'bg-farm-green' : 'bg-gray-300'"
-          >
-            <span
-              class="inline-block h-6 w-6 transform rounded-full bg-white transition-transform"
-              :class="isAnnual ? 'translate-x-9' : 'translate-x-1'"
-            />
-          </button>
-          <span class="text-gray-700 font-medium" :class="{ 'text-farm-green': isAnnual }">
-            Annual
-            <span class="text-sm text-green-600 font-semibold ml-1">(Save 20%)</span>
-          </span>
-        </div>
+        <p v-else class="text-xl text-gray-600 max-w-3xl mx-auto">
+          Choose the right plan for your farm. No hidden fees, no surprises.
+          Every plan starts with a {{ trialDays }}-day free trial.
+        </p>
       </div>
     </section>
 
     <!-- Pricing Cards -->
     <section class="py-16 px-4">
       <div class="max-w-7xl mx-auto">
-        <div class="grid md:grid-cols-3 gap-8 lg:gap-12">
-          
-          <!-- Starter Plan -->
-          <div class="bg-white rounded-2xl shadow-lg p-8 border-2 border-gray-200 hover:border-farm-green transition-all">
+        <div
+          class="grid gap-8 lg:gap-12"
+          :class="plans.length > 1 ? 'md:grid-cols-3' : 'mx-auto max-w-md'"
+        >
+          <div
+            v-for="plan in plans"
+            :key="plan.slug"
+            class="relative flex flex-col bg-white rounded-2xl shadow-lg p-8 border-2 transition-all"
+            :class="isPopular(plan) ? 'border-farm-green shadow-2xl md:-mt-2' : 'border-gray-200 hover:border-farm-green'"
+          >
+            <span
+              v-if="isPopular(plan)"
+              class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-farm-green px-4 py-1 text-sm font-bold text-white whitespace-nowrap"
+            >
+              Most popular
+            </span>
+
             <div class="mb-6">
-              <h3 class="text-2xl font-bold text-gray-900 mb-2">Starter</h3>
-              <p class="text-gray-600">Perfect for small farms</p>
+              <h3 class="text-2xl font-bold text-gray-900 mb-2">{{ plan.name }}</h3>
+              <p v-if="plan.description" class="text-gray-600">{{ plan.description }}</p>
             </div>
-            
+
             <div class="mb-6">
-              <div class="flex items-baseline">
-                <span class="text-5xl font-bold text-gray-900">
-                  ${{ isAnnual ? '19' : '29' }}
-                </span>
-                <span class="text-gray-600 ml-2">/month</span>
+              <div v-if="Number(plan.price) === 0" class="flex items-baseline">
+                <span class="text-5xl font-bold text-gray-900">Free</span>
+                <span class="text-gray-600 ml-2">for {{ monthsFor(plan) }} months</span>
               </div>
-              <p v-if="isAnnual" class="text-sm text-gray-500 mt-1">
-                Billed annually ($228/year)
+              <div v-else class="flex items-baseline">
+                <span class="text-5xl font-bold text-gray-900">
+                  {{ plan.currency }} {{ Number(plan.price).toLocaleString('en-KE') }}
+                </span>
+                <span class="text-gray-600 ml-2">/{{ plan.interval === 'yearly' ? 'year' : 'month' }}</span>
+              </div>
+              <p v-if="Number(plan.price) > 0" class="text-sm text-gray-500 mt-1">
+                {{ plan.trial_days }}-day free trial first
               </p>
             </div>
 
-            <ul class="space-y-4 mb-8">
-              <li class="flex items-start">
+            <ul class="space-y-4 mb-8 flex-1">
+              <li v-for="feature in plan.features" :key="feature" class="flex items-start">
                 <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
-                <span class="ml-3 text-gray-700">Up to 50 acres</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Up to 100 livestock</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Basic crop tracking</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Weather forecasts</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Mobile app access</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Email support</span>
+                <span class="ml-3 text-gray-700">{{ feature }}</span>
               </li>
             </ul>
 
-            <NuxtLink 
-              to="/register" 
-              class="block w-full text-center bg-gray-100 text-gray-900 py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
+            <p class="mb-4 border-t border-gray-100 pt-4 text-xs text-gray-400">{{ planLimitsLabel(plan) }}</p>
+
+            <NuxtLink
+              :to="`/register?plan=${plan.slug}`"
+              class="block w-full text-center py-3 px-6 rounded-lg transition-colors font-semibold"
+              :class="isPopular(plan) ? 'bg-farm-green text-white hover:bg-green-600' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'"
             >
-              Start Free Trial
-            </NuxtLink>
-          </div>
-
-          <!-- Professional Plan (Most Popular) -->
-          <div class="bg-white rounded-2xl shadow-2xl p-8 border-2 border-farm-green relative transform md:scale-105">
-            <div class="absolute -top-5 left-1/2 transform -translate-x-1/2">
-              <span class="bg-farm-green text-white px-4 py-1 rounded-full text-sm font-semibold">
-                Most Popular
-              </span>
-            </div>
-            
-            <div class="mb-6">
-              <h3 class="text-2xl font-bold text-gray-900 mb-2">Professional</h3>
-              <p class="text-gray-600">For growing operations</p>
-            </div>
-            
-            <div class="mb-6">
-              <div class="flex items-baseline">
-                <span class="text-5xl font-bold text-gray-900">
-                  ${{ isAnnual ? '39' : '49' }}
-                </span>
-                <span class="text-gray-600 ml-2">/month</span>
-              </div>
-              <p v-if="isAnnual" class="text-sm text-gray-500 mt-1">
-                Billed annually ($468/year)
-              </p>
-            </div>
-
-            <ul class="space-y-4 mb-8">
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Up to 500 acres</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Unlimited livestock</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Advanced crop management</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Financial tracking & reports</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Equipment maintenance tracking</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Priority support</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">API access</span>
-              </li>
-            </ul>
-
-            <NuxtLink 
-              to="/register" 
-              class="block w-full text-center bg-farm-green text-white py-3 px-6 rounded-lg hover:bg-green-600 transition-colors font-semibold"
-            >
-              Start Free Trial
-            </NuxtLink>
-          </div>
-
-          <!-- Enterprise Plan -->
-          <div class="bg-white rounded-2xl shadow-lg p-8 border-2 border-gray-200 hover:border-farm-green transition-all">
-            <div class="mb-6">
-              <h3 class="text-2xl font-bold text-gray-900 mb-2">Enterprise</h3>
-              <p class="text-gray-600">For large-scale farms</p>
-            </div>
-            
-            <div class="mb-6">
-              <div class="flex items-baseline">
-                <span class="text-5xl font-bold text-gray-900">
-                  ${{ isAnnual ? '79' : '99' }}
-                </span>
-                <span class="text-gray-600 ml-2">/month</span>
-              </div>
-              <p v-if="isAnnual" class="text-sm text-gray-500 mt-1">
-                Billed annually ($948/year)
-              </p>
-            </div>
-
-            <ul class="space-y-4 mb-8">
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Unlimited acres</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Unlimited livestock</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Multi-location support</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Advanced analytics & AI insights</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Team management (unlimited users)</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Custom integrations</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">Dedicated account manager</span>
-              </li>
-              <li class="flex items-start">
-                <svg class="w-6 h-6 text-farm-green flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="ml-3 text-gray-700">24/7 phone support</span>
-              </li>
-            </ul>
-
-            <NuxtLink 
-              to="/register" 
-              class="block w-full text-center bg-gray-100 text-gray-900 py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
-            >
-              Start Free Trial
+              {{ Number(plan.price) === 0 ? 'Get started free' : 'Start free trial' }}
             </NuxtLink>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Feature Comparison Table -->
-    <section class="py-16 px-4 bg-white">
+    <!-- Feature Comparison Table — built from the live catalogue, so it stays
+         truthful when plans are added, renamed or switched off. -->
+    <section v-if="plans.length > 1" class="py-16 px-4 bg-white">
       <div class="max-w-7xl mx-auto">
         <h2 class="text-4xl font-bold text-center text-gray-900 mb-12">
           Compare All Features
         </h2>
-        
+
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
               <tr class="border-b-2 border-gray-200">
                 <th class="text-left py-4 px-6 text-gray-700 font-semibold">Feature</th>
-                <th class="text-center py-4 px-6 text-gray-700 font-semibold">Starter</th>
-                <th class="text-center py-4 px-6 text-gray-700 font-semibold">Professional</th>
-                <th class="text-center py-4 px-6 text-gray-700 font-semibold">Enterprise</th>
+                <th v-for="plan in plans" :key="plan.slug" class="text-center py-4 px-6 text-gray-700 font-semibold">
+                  {{ plan.name }}
+                </th>
               </tr>
             </thead>
             <tbody>
-              <tr class="border-b border-gray-100">
-                <td class="py-4 px-6 text-gray-700">Farm Size</td>
-                <td class="py-4 px-6 text-center text-gray-600">50 acres</td>
-                <td class="py-4 px-6 text-center text-gray-600">500 acres</td>
-                <td class="py-4 px-6 text-center text-gray-600">Unlimited</td>
-              </tr>
-              <tr class="border-b border-gray-100">
-                <td class="py-4 px-6 text-gray-700">Livestock Tracking</td>
-                <td class="py-4 px-6 text-center text-gray-600">100 animals</td>
-                <td class="py-4 px-6 text-center text-gray-600">Unlimited</td>
-                <td class="py-4 px-6 text-center text-gray-600">Unlimited</td>
-              </tr>
-              <tr class="border-b border-gray-100">
-                <td class="py-4 px-6 text-gray-700">Crop Management</td>
-                <td class="py-4 px-6 text-center">
-                  <svg class="w-6 h-6 text-farm-green mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </td>
-                <td class="py-4 px-6 text-center">
-                  <svg class="w-6 h-6 text-farm-green mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </td>
-                <td class="py-4 px-6 text-center">
-                  <svg class="w-6 h-6 text-farm-green mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
+              <tr v-for="row in limitRows" :key="row.label" class="border-b border-gray-100">
+                <td class="py-4 px-6 text-gray-700">{{ row.label }}</td>
+                <td v-for="value in row.values" :key="value.slug" class="py-4 px-6 text-center text-gray-600">
+                  {{ value.text }}
                 </td>
               </tr>
-              <tr class="border-b border-gray-100">
-                <td class="py-4 px-6 text-gray-700">Financial Tracking</td>
-                <td class="py-4 px-6 text-center">
-                  <span class="text-gray-400">—</span>
-                </td>
-                <td class="py-4 px-6 text-center">
-                  <svg class="w-6 h-6 text-farm-green mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <tr v-for="feature in allFeatures" :key="feature" class="border-b border-gray-100">
+                <td class="py-4 px-6 text-gray-700">{{ feature }}</td>
+                <td v-for="plan in plans" :key="plan.slug" class="py-4 px-6 text-center">
+                  <svg v-if="plan.features?.includes(feature)" class="w-5 h-5 text-farm-green mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                   </svg>
+                  <span v-else class="text-gray-300">—</span>
                 </td>
-                <td class="py-4 px-6 text-center">
-                  <svg class="w-6 h-6 text-farm-green mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </td>
-              </tr>
-              <tr class="border-b border-gray-100">
-                <td class="py-4 px-6 text-gray-700">Weather Forecasts</td>
-                <td class="py-4 px-6 text-center">
-                  <svg class="w-6 h-6 text-farm-green mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </td>
-                <td class="py-4 px-6 text-center">
-                  <svg class="w-6 h-6 text-farm-green mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </td>
-                <td class="py-4 px-6 text-center">
-                  <svg class="w-6 h-6 text-farm-green mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </td>
-              </tr>
-              <tr class="border-b border-gray-100">
-                <td class="py-4 px-6 text-gray-700">API Access</td>
-                <td class="py-4 px-6 text-center">
-                  <span class="text-gray-400">—</span>
-                </td>
-                <td class="py-4 px-6 text-center">
-                  <svg class="w-6 h-6 text-farm-green mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </td>
-                <td class="py-4 px-6 text-center">
-                  <svg class="w-6 h-6 text-farm-green mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </td>
-              </tr>
-              <tr class="border-b border-gray-100">
-                <td class="py-4 px-6 text-gray-700">Team Management</td>
-                <td class="py-4 px-6 text-center">
-                  <span class="text-gray-400">—</span>
-                </td>
-                <td class="py-4 px-6 text-center text-gray-600">Up to 5 users</td>
-                <td class="py-4 px-6 text-center text-gray-600">Unlimited</td>
-              </tr>
-              <tr class="border-b border-gray-100">
-                <td class="py-4 px-6 text-gray-700">Support</td>
-                <td class="py-4 px-6 text-center text-gray-600">Email</td>
-                <td class="py-4 px-6 text-center text-gray-600">Priority</td>
-                <td class="py-4 px-6 text-center text-gray-600">24/7 Phone</td>
               </tr>
             </tbody>
           </table>
@@ -416,45 +155,20 @@
         <h2 class="text-4xl font-bold text-center text-gray-900 mb-12">
           Frequently Asked Questions
         </h2>
-        
-        <div class="space-y-6">
-          <div class="bg-white rounded-lg p-6 shadow-sm">
-            <h3 class="text-xl font-semibold text-gray-900 mb-3">
-              Can I change plans later?
-            </h3>
-            <p class="text-gray-600">
-              Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, 
-              and we'll prorate any billing differences.
-            </p>
-          </div>
 
+        <div class="space-y-6">
           <div class="bg-white rounded-lg p-6 shadow-sm">
             <h3 class="text-xl font-semibold text-gray-900 mb-3">
               Is there a free trial?
             </h3>
-            <p class="text-gray-600">
-              All plans include a 14-day free trial with full access to all features. 
-              No credit card required to start your trial.
+            <p v-if="isFreeOnly" class="text-gray-600">
+              Better than that — Farmconsul is completely free for {{ trialMonths }} months while we are
+              in testing, with every feature unlocked and no limits. You do not need to enter any
+              payment details to start.
             </p>
-          </div>
-
-          <div class="bg-white rounded-lg p-6 shadow-sm">
-            <h3 class="text-xl font-semibold text-gray-900 mb-3">
-              What happens to my data if I cancel?
-            </h3>
-            <p class="text-gray-600">
-              Your data is always yours. You can export all your data at any time, and we keep it 
-              for 90 days after cancellation in case you want to return.
-            </p>
-          </div>
-
-          <div class="bg-white rounded-lg p-6 shadow-sm">
-            <h3 class="text-xl font-semibold text-gray-900 mb-3">
-              Do you offer discounts for non-profits?
-            </h3>
-            <p class="text-gray-600">
-              Yes! We offer special pricing for educational institutions, non-profits, and agricultural 
-              cooperatives. Contact our sales team for more information.
+            <p v-else class="text-gray-600">
+              Yes. Every plan starts with a {{ trialDays }}-day free trial with full access to all
+              features, and you do not need to enter payment details to start.
             </p>
           </div>
 
@@ -463,8 +177,38 @@
               What payment methods do you accept?
             </h3>
             <p class="text-gray-600">
-              We accept all major credit cards, debit cards, and ACH bank transfers for annual plans. 
-              All payments are processed securely through Stripe.
+              M-Pesa, bank transfer or cash. There is nothing to pay today — when the time comes you
+              send the payment and our team confirms it and activates your plan.
+            </p>
+          </div>
+
+          <div class="bg-white rounded-lg p-6 shadow-sm">
+            <h3 class="text-xl font-semibold text-gray-900 mb-3">
+              What happens when my free period ends?
+            </h3>
+            <p class="text-gray-600">
+              We will let you know well before it does. Your records are never deleted or locked
+              away — you keep access to your data even if a payment is late.
+            </p>
+          </div>
+
+          <div class="bg-white rounded-lg p-6 shadow-sm">
+            <h3 class="text-xl font-semibold text-gray-900 mb-3">
+              Can I change plans later?
+            </h3>
+            <p class="text-gray-600">
+              Yes. You can move between plans at any time from your billing page, and any time you
+              have already paid for carries over.
+            </p>
+          </div>
+
+          <div class="bg-white rounded-lg p-6 shadow-sm">
+            <h3 class="text-xl font-semibold text-gray-900 mb-3">
+              Does it work without internet?
+            </h3>
+            <p class="text-gray-600">
+              Yes. Record harvests, treatments, weights and sales out in the field with no network —
+              everything syncs by itself the moment you are back online.
             </p>
           </div>
         </div>
@@ -478,17 +222,17 @@
           Ready to Transform Your Farm Management?
         </h2>
         <p class="text-xl text-green-50 mb-8">
-          Join thousands of farmers who are already using Farmconsul to optimize their operations.
+          Track crops, livestock, sales and money from your phone — even offline in the field.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <NuxtLink 
-            to="/register" 
+          <NuxtLink
+            to="/register"
             class="bg-white text-farm-green px-8 py-4 rounded-lg hover:bg-gray-100 transition-colors font-semibold text-lg"
           >
-            Start Free Trial
+            {{ isFreeOnly ? 'Get started free' : 'Start free trial' }}
           </NuxtLink>
-          <NuxtLink 
-            to="/login" 
+          <NuxtLink
+            to="/login"
             class="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 transition-colors font-semibold text-lg border-2 border-white"
           >
             Sign In
@@ -504,7 +248,7 @@
           <div class="flex items-center justify-center space-x-3 mb-4">
             <div class="w-10 h-10 bg-farm-green rounded-full flex items-center justify-center">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
               </svg>
             </div>
@@ -522,17 +266,61 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
+<script setup lang="ts">
+import type { BillingPlan } from '~/composables/useBilling'
 
-const isAnnual = ref(false)
+// Live catalogue: the same source the register page uses, so pricing can never
+// drift from what a farmer is actually signed up to.
+const { plans, fetchPublicPlans } = usePublicPlans()
 
-// SEO Meta
+onMounted(fetchPublicPlans)
+
+const monthsFor = (plan: BillingPlan) => Math.round((plan.trial_days ?? 180) / 30)
+
+/** True while the only thing on offer is the free plan (the testing period). */
+const isFreeOnly = computed(() =>
+  plans.value.length === 1 && Number(plans.value[0]?.price ?? 0) === 0
+)
+const trialDays = computed(() => plans.value[0]?.trial_days ?? 14)
+const trialMonths = computed(() => Math.round(trialDays.value / 30))
+
+// Highlight the middle tier when there are several; nothing to highlight when
+// there is only one plan.
+const isPopular = (plan: BillingPlan) =>
+  plans.value.length > 1 && plans.value[Math.floor(plans.value.length / 2)]?.slug === plan.slug
+
+const formatLimit = (value: number | null | undefined) =>
+  value ? value.toLocaleString('en-KE') : 'Unlimited'
+
+const limitRows = computed(() => [
+  { label: 'Farms', values: plans.value.map(p => ({ slug: p.slug, text: formatLimit(p.max_farms) })) },
+  { label: 'Animals', values: plans.value.map(p => ({ slug: p.slug, text: formatLimit(p.max_animals) })) },
+  { label: 'Team members', values: plans.value.map(p => ({ slug: p.slug, text: formatLimit(p.max_users) })) },
+  { label: 'Free trial', values: plans.value.map(p => ({ slug: p.slug, text: `${p.trial_days} days` })) }
+])
+
+/** Every feature named by any plan, in the order they first appear. */
+const allFeatures = computed(() => {
+  const seen: string[] = []
+  for (const plan of plans.value) {
+    for (const feature of plan.features ?? []) {
+      if (!seen.includes(feature)) seen.push(feature)
+    }
+  }
+  return seen
+})
+
+const seoDescription = computed(() =>
+  isFreeOnly.value
+    ? `Farmconsul is free for ${trialMonths.value} months while we are in testing — track crops, livestock, sales and money, even offline.`
+    : 'Simple KES pricing for every farm. Track crops, livestock, sales and money, even offline.'
+)
+
 useSeoMeta({
   title: 'Pricing — Farmconsul',
-  description: 'Choose the perfect plan for your farm. Simple, transparent pricing with no hidden fees. All plans include a 14-day free trial.',
+  description: seoDescription,
   ogTitle: 'Pricing — Farmconsul',
-  ogDescription: 'Choose the perfect plan for your farm. Simple, transparent pricing with no hidden fees. All plans include a 14-day free trial.',
+  ogDescription: seoDescription,
   ogUrl: 'https://farmconsul.com/pricing',
 })
 
@@ -540,7 +328,3 @@ useHead({
   link: [{ rel: 'canonical', href: 'https://farmconsul.com/pricing' }],
 })
 </script>
-
-<style scoped>
-/* Additional custom styles if needed */
-</style>

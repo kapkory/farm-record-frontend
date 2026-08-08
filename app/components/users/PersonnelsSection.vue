@@ -60,6 +60,7 @@
               <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Role</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Phone</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Email</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Login</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Notes</th>
             </tr>
           </thead>
@@ -71,10 +72,16 @@
               </td>
               <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ personnel.phone || '—' }}</td>
               <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{{ personnel.email || '—' }}</td>
+              <td class="whitespace-nowrap px-6 py-4">
+                <span v-if="personnel.has_login" class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
+                  <KeyRound class="h-3 w-3" /> Can log in
+                </span>
+                <span v-else class="text-xs text-gray-400">No login</span>
+              </td>
               <td class="max-w-md px-6 py-4 text-sm text-gray-500">{{ personnel.notes || '—' }}</td>
             </tr>
             <tr v-if="!filteredPersonnels.length">
-              <td colspan="5" class="px-6 py-12 text-center text-gray-500">No personnels found.</td>
+              <td colspan="6" class="px-6 py-12 text-center text-gray-500">No personnels found.</td>
             </tr>
           </tbody>
         </table>
@@ -89,7 +96,7 @@
             <div class="flex items-center justify-between border-b border-gray-200 p-4">
               <div>
                 <h3 class="text-lg font-semibold text-gray-900">Add Personnel</h3>
-                <p class="mt-1 text-sm text-gray-500">Save workers or service providers who do not need login access.</p>
+                <p class="mt-1 text-sm text-gray-500">Save workers or service providers — optionally give them their own login.</p>
               </div>
               <button @click="closePersonnelModal" class="text-gray-400 hover:text-gray-600">
                 <X class="h-5 w-5" />
@@ -125,8 +132,10 @@
                 </div>
 
                 <div>
-                  <Label for="personnel_email" class="mb-1 block text-sm font-medium text-gray-700">Email</Label>
-                  <Input id="personnel_email" v-model="personnelForm.email" type="email" class="w-full" />
+                  <Label for="personnel_email" class="mb-1 block text-sm font-medium text-gray-700">
+                    Email <span v-if="personnelForm.create_login" class="text-red-500">*</span>
+                  </Label>
+                  <Input id="personnel_email" v-model="personnelForm.email" type="email" :required="personnelForm.create_login" class="w-full" />
                   <p v-if="personnelFormErrors.email" class="mt-1 text-xs text-red-600">{{ personnelFormErrors.email }}</p>
                 </div>
               </div>
@@ -141,6 +150,55 @@
                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500"
                 ></textarea>
                 <p v-if="personnelFormErrors.notes" class="mt-1 text-xs text-red-600">{{ personnelFormErrors.notes }}</p>
+              </div>
+
+              <!-- Optional login -->
+              <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <label class="flex items-start gap-3">
+                  <input v-model="personnelForm.create_login" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500" />
+                  <span>
+                    <span class="block text-sm font-medium text-gray-900">Allow this person to log in</span>
+                    <span class="block text-xs text-gray-500">Creates a sign-in for them, scoped to this farm. They use the email below.</span>
+                  </span>
+                </label>
+
+                <div v-if="personnelForm.create_login" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <Label for="personnel_password" class="mb-1 block text-sm font-medium text-gray-700">Password</Label>
+                    <Input id="personnel_password" v-model="personnelForm.password" type="password" autocomplete="new-password" class="w-full" />
+                    <p v-if="personnelFormErrors.password" class="mt-1 text-xs text-red-600">{{ personnelFormErrors.password }}</p>
+                    <p v-else class="mt-1 text-xs text-gray-500">Share this with them securely; they can change it after signing in.</p>
+                  </div>
+                  <div>
+                    <Label for="personnel_access" class="mb-1 block text-sm font-medium text-gray-700">Access level</Label>
+                    <select
+                      id="personnel_access"
+                      v-model="personnelForm.access_level"
+                      class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      <option value="staff">Staff — day-to-day recording</option>
+                      <option value="manager">Manager — broader access</option>
+                    </select>
+                    <p v-if="personnelFormErrors.access_level" class="mt-1 text-xs text-red-600">{{ personnelFormErrors.access_level }}</p>
+                  </div>
+                  <div class="md:col-span-2">
+                    <Label class="mb-1 block text-sm font-medium text-gray-700">Farms they can see</Label>
+                    <div v-if="!farms.length" class="text-xs text-gray-500">Loading farms…</div>
+                    <div v-else class="max-h-40 space-y-1 overflow-y-auto rounded-md border border-gray-200 bg-white p-2">
+                      <label v-for="farm in farms" :key="farm.uuid" class="flex items-center gap-2 px-1 py-1 text-sm">
+                        <input v-model="personnelForm.farm_uuids" type="checkbox" :value="farm.uuid" class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500" />
+                        <span class="text-gray-800">{{ farm.name }}</span>
+                      </label>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">
+                      Leave all unticked to give access to every farm.
+                    </p>
+                  </div>
+
+                  <p class="md:col-span-2 text-xs text-amber-700">
+                    A login needs a unique email that isn't already registered.
+                  </p>
+                </div>
               </div>
 
               <div v-if="personnelSubmitError" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -169,10 +227,10 @@
 </template>
 
 <script setup lang="ts">
-import { Plus, Search, X } from 'lucide-vue-next'
+import { KeyRound, Plus, Search, X } from 'lucide-vue-next'
 
 type PersonnelRole = 'casual' | 'veterinary' | 'worker' | 'manager'
-type PersonnelFormErrorKey = 'name' | 'role' | 'phone' | 'email' | 'notes'
+type PersonnelFormErrorKey = 'name' | 'role' | 'phone' | 'email' | 'notes' | 'password' | 'access_level'
 type PersonnelValidationErrors = Partial<Record<PersonnelFormErrorKey, string>>
 
 interface PersonnelRecord {
@@ -182,6 +240,7 @@ interface PersonnelRecord {
   phone: string | null
   email: string | null
   notes: string | null
+  has_login?: boolean
 }
 
 const { $apiFetch } = useNuxtApp()
@@ -205,8 +264,24 @@ const defaultPersonnelForm = () => ({
   role: '',
   phone: '',
   email: '',
-  notes: ''
+  notes: '',
+  create_login: false,
+  password: '',
+  access_level: 'staff' as 'staff' | 'manager',
+  farm_uuids: [] as string[]
 })
+
+interface FarmOption { uuid: string, name: string }
+const farms = ref<FarmOption[]>([])
+
+const fetchFarms = async () => {
+  try {
+    const { data } = await getReference<any>('farms_list')
+    farms.value = (data ?? []).map((f: any) => ({ uuid: f.uuid, name: f.name }))
+  } catch (err) {
+    console.error('Failed to load farms:', err)
+  }
+}
 
 const personnelForm = ref(defaultPersonnelForm())
 
@@ -261,6 +336,8 @@ const setPersonnelValidationErrors = (errors: Record<string, string[] | string> 
     if (key === 'phone') mapped.phone = message
     if (key === 'email') mapped.email = message
     if (key === 'notes') mapped.notes = message
+    if (key === 'password') mapped.password = message
+    if (key === 'access_level') mapped.access_level = message
   }
 
   personnelFormErrors.value = mapped
@@ -304,12 +381,18 @@ const submitPersonnel = async () => {
   personnelFormErrors.value = {}
   personnelErrorList.value = []
 
+  const wantsLogin = personnelForm.value.create_login
   const payload = {
     name: personnelForm.value.name.trim(),
     role: personnelForm.value.role,
     phone: personnelForm.value.phone.trim(),
     email: personnelForm.value.email.trim() || null,
     notes: personnelForm.value.notes.trim() || null,
+    create_login: wantsLogin,
+    password: wantsLogin ? personnelForm.value.password : null,
+    access_level: wantsLogin ? personnelForm.value.access_level : null,
+    // Empty means every farm — the backend treats "no rows" as unrestricted.
+    farm_uuids: wantsLogin ? personnelForm.value.farm_uuids : [],
   }
 
   try {
@@ -336,5 +419,6 @@ const submitPersonnel = async () => {
 
 onMounted(() => {
   fetchPersonnels()
+  fetchFarms()
 })
 </script>
